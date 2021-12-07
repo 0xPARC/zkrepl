@@ -5,7 +5,8 @@
   "main": "index.js",
   "scripts": {
     "dev": "vite --port 4000",
-    "build": "vite build"
+    "build": "vite build",
+    "deploy": "echo 'zkrepl.kkwok.dev' > dist/CNAME && gh-pages -d dist"
   },
   "repository": {
     "type": "git",
@@ -33,6 +34,7 @@
     "@types/path-browserify": "^1.0.0",
     "@types/react": "^17.0.37",
     "@types/react-dom": "^17.0.11",
+    "gh-pages": "^3.2.3",
     "less": "^4.1.2",
     "vite": "~2.7.0"
   }

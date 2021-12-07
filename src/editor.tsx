@@ -18,6 +18,7 @@ console.log(circomLib, wasmURL)
 type Message = {
     type: string
     text: string
+    files?: Record<string, Uint8Array>
 }
 
 export default function App() {
@@ -26,7 +27,9 @@ export default function App() {
     const [editor, setEditor] =
         React.useState<monaco.editor.IStandaloneCodeEditor | null>(null)
     const monacoEl = React.useRef(null)
-    const workerRef = React.useRef<Worker | null>(null)
+    const workerRef = React.useRef<(Worker & { running?: boolean }) | null>(
+        null
+    )
 
     React.useEffect(() => {
         if (monacoEl && !editor) {
@@ -36,19 +39,25 @@ export default function App() {
                 automaticLayout: true, // the important part
             })
             const run = () => {
-                if (!workerRef.current) {
+                if (!workerRef.current || workerRef.current!.running) {
+                    if (workerRef.current) {
+                        workerRef.current.terminate()
+                        workerRef.current = null
+                    }
                     workerRef.current = new CircomWorker()
                     workerRef.current.onmessage = (e: MessageEvent) => {
                         const data = e.data
                         if (data.type === "fail") {
                             setRunning(false)
+                            workerRef.current!.running = false
                         } else if (data.type === "done") {
                             setRunning(false)
-                            // console.log(data.time)
+                            workerRef.current!.running = false
                         }
                         setMessages((k) => [...k, data])
                     }
                 }
+                workerRef.current!.running = true
                 setRunning(true)
                 setMessages([])
                 workerRef.current.postMessage({
@@ -88,6 +97,27 @@ export default function App() {
                         <div key={i}>
                             <div className="label">{m.type}: </div>
                             <Ansi>{m.text}</Ansi>
+                            {m.files && (
+                                <div className="files">
+                                    {Object.entries(m.files).map(
+                                        ([name, data]) => (
+                                            <li key={name}>
+                                                <a
+                                                    href={URL.createObjectURL(
+                                                        new Blob([data], {
+                                                            type: "application/octet-stream",
+                                                        })
+                                                    )}
+                                                    download={name}
+                                                >
+                                                    {name}
+                                                </a>{" "}
+                                                ({data.length} bytes)
+                                            </li>
+                                        )
+                                    )}
+                                </div>
+                            )}
                         </div>
                     ))}
                     {running ? (

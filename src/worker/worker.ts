@@ -151,7 +151,16 @@ async function bootWasm(code: string) {
         inputObj = JSON.parse(input[1])
     }
     const wtns = await witness.calculateWTNSBin(inputObj, null)
-    // console.log(wtns)
+
+    postMessage({
+        type: "Artifacts",
+        text: "",
+        files: {
+            "example.wtns": wtns,
+            "example.wasm": binary.buffer,
+            "example.r1cs": wasmFs.fs.readFileSync("example.r1cs"),
+        },
+    })
 }
 
 onmessage = (e: MessageEvent) => {
