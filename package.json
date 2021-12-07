@@ -1,0 +1,39 @@
+{
+  "name": "zkrepl",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "dev": "vite --port 4000",
+    "build": "vite build"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/antimatter15/zkrepl.git"
+  },
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/antimatter15/zkrepl/issues"
+  },
+  "homepage": "https://github.com/antimatter15/zkrepl#readme",
+  "dependencies": {
+    "@wasmer/wasi": "^0.12.0",
+    "@wasmer/wasmfs": "^0.12.0",
+    "ansi-to-react": "^6.1.6",
+    "circom2": "^0.0.4",
+    "monaco-editor": "^0.30.1",
+    "path-browserify": "^1.0.1",
+    "react": "^18.0.0-beta-12bffc78d-20211206",
+    "react-dom": "^18.0.0-beta-12bffc78d-20211206",
+    "unzipit": "^1.3.6",
+    "wabt": "^1.0.24"
+  },
+  "devDependencies": {
+    "@types/path-browserify": "^1.0.0",
+    "@types/react": "^17.0.37",
+    "@types/react-dom": "^17.0.11",
+    "less": "^4.1.2",
+    "vite": "~2.7.0"
+  }
+}
