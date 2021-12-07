@@ -56,6 +56,16 @@ export default function App() {
                         }
                         setMessages((k) => [...k, data])
                     }
+                    workerRef.current.onerror = (e) => {
+                        console.error(e)
+                        setMessages((k) => [
+                            ...k,
+                            {
+                                type: "error",
+                                text: e.message,
+                            },
+                        ])
+                    }
                 }
                 workerRef.current!.running = true
                 setRunning(true)
@@ -120,18 +130,31 @@ export default function App() {
                             )}
                         </div>
                     ))}
-                    {running ? (
-                        <div className="loading">
-                            <div className="lds-ellipsis">
-                                <div></div>
-                                <div></div>
-                                <div></div>
-                                <div></div>
-                            </div>
-                        </div>
-                    ) : null}
+                    {running ? <LoadingIndicator /> : null}
                 </div>
             </div>
+        </div>
+    )
+}
+
+function LoadingIndicator() {
+    const [time, setTime] = React.useState(0)
+    React.useEffect(() => {
+        const startTime = Date.now()
+        const interval = setInterval(() => {
+            setTime(Date.now() - startTime)
+        }, 16)
+        return () => clearInterval(interval)
+    }, [])
+    return (
+        <div className="loading">
+            <div className="lds-ellipsis">
+                <div></div>
+                <div></div>
+                <div></div>
+                <div></div>
+            </div>
+            <div className="time">{(time / 1000).toFixed(2)}s</div>
         </div>
     )
 }

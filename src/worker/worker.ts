@@ -86,11 +86,17 @@ async function bootWasm(code: string) {
     wasmFs.fs.writeFileSync("/dev/stdout", "")
     wasmFs.fs.writeFileSync("example.circom", code)
 
+    let bufferSize = 10 * 1024 * 1024
+    let writeBuffer = new Uint8Array(bufferSize)
+    let writeBufferFd = -1
+    let writeBufferOffset = 0
+    const flushBuffer = () => {}
+
     let wasi = new WASI({
         // Arguments passed to the Wasm Module
         // The first argument is usually the filepath to the executable WASI module
         // we want to run.
-        args: ["circom2", "example.circom", "--wat", "--r1cs"],
+        args: ["circom2", "example.circom", "--r1cs", "--wat"],
 
         // Environment variables that are accesible to the WASI module
         env: {
@@ -104,7 +110,61 @@ async function bootWasm(code: string) {
         // Bindings that are used by the WASI Instance (fs, path, etc...)
         bindings: {
             ...browserBindings,
-            fs: wasmFs.fs,
+
+            // This is a really shitty implementation of a write buffer
+            // it is pretty garbage and shouldn't have any reason for working
+            // but it seems to work well enough to speed up more complex
+            // circuits by more than 10x
+            fs: {
+                ...wasmFs.fs,
+                writeSync(
+                    fd: number,
+                    buf: Uint8Array,
+                    offset: number,
+                    len: number
+                ) {
+                    if (
+                        writeBufferFd === fd &&
+                        writeBufferOffset + len < bufferSize
+                    ) {
+                        writeBuffer.set(buf, writeBufferOffset)
+                        writeBufferOffset += len
+                        return len
+                    } else {
+                        // console.log("resetting")
+                        if (writeBufferFd >= 0) {
+                            wasmFs.fs.writeSync(
+                                writeBufferFd,
+                                writeBuffer,
+                                0,
+                                writeBufferOffset
+                            )
+                        }
+                        writeBufferFd = fd
+                        writeBufferOffset = 0
+
+                        writeBuffer.set(buf, writeBufferOffset)
+                        writeBufferOffset += len
+                    }
+                    return len
+                },
+                closeSync(fd: number) {
+                    if (writeBufferFd >= 0) {
+                        // console.log("flush")
+                        wasmFs.fs.writeSync(
+                            writeBufferFd,
+                            writeBuffer,
+                            0,
+                            writeBufferOffset
+                        )
+                        writeBufferFd = -1
+                        writeBufferOffset = 0
+                    }
+                    if (fd >= 0) {
+                        return wasmFs.fs.closeSync(fd)
+                    }
+                },
+            },
         },
     })
 
@@ -112,28 +172,29 @@ async function bootWasm(code: string) {
     let instance = await WebAssembly.instantiate(wasm, {
         ...wasi.getImports(wasm),
     })
-
+    console.log("starting")
     try {
         wasi.start(instance) // Start the WASI instance
     } catch (err) {
         console.log(err)
     }
-    const stderr = wasmFs.fs.readFileSync("/dev/stderr", "utf8")
 
+    wasi.bindings.fs.closeSync(-1)
+
+    const stderr = wasmFs.fs.readFileSync("/dev/stderr", "utf8")
+    console.log(stderr)
     postMessage({ type: "stderr", text: stderr })
 
     let stdout = await wasmFs.getStdOut()
     postMessage({ type: "stdout", text: stdout })
 
-    // console.log(stdout)
-    // console.log(stderr)
+    console.log(stdout)
 
     const wabt = await wabtLoader()
+    const watData = wasmFs.fs.readFileSync("example_js/example.wat")
 
-    const module = wabt.parseWat(
-        "example.wat",
-        wasmFs.fs.readFileSync("example_js/example.wat")
-    )
+    // console.log(new TextDecoder().decode(watData))
+    const module = wabt.parseWat("example.wat", watData)
     module.resolveNames()
     module.validate()
     var binary = module.toBinary({})
@@ -169,16 +230,16 @@ onmessage = (e: MessageEvent) => {
     if (data.type === "run") {
         const startTime = performance.now()
         bootWasm(data.code)
+            .catch((err) => {
+                postMessage({ type: "fail", text: err.message })
+            })
             .then(() => {
                 const elapsed = performance.now() - startTime
                 postMessage({
                     type: "done",
                     time: elapsed,
-                    text: `Finished in ${elapsed.toFixed(3)}ms`,
+                    text: `Finished in ${(elapsed / 1000).toFixed(2)}s`,
                 })
-            })
-            .catch((err) => {
-                postMessage({ type: "fail", text: err.message })
             })
     }
 }
