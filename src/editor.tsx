@@ -152,6 +152,11 @@ export default function App() {
                                 history.replaceState(null, "", "/?gist=" + k.id)
                             } else if (k.message === "Bad credentials") {
                                 logIn()
+                            } else if (k.message === "Not Found" && GistID) {
+                                // maybe trying to save to something that we don't own
+                                // we should then just "fork" it
+                                history.replaceState(null, "", "/")
+                                save()
                             }
                             setRunning(false)
                         })
