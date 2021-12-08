@@ -33,11 +33,52 @@ export default function App() {
 
     React.useEffect(() => {
         if (monacoEl && !editor) {
+            const OAuthCode = new URLSearchParams(location.search).get("code")
+            if (OAuthCode) {
+                history.replaceState(null, "", "/")
+                fetch(
+                    "https://kikks470wl.execute-api.us-west-1.amazonaws.com/access_token?code=" +
+                        OAuthCode,
+                    { method: "POST" }
+                )
+                    .then((k) => k.formData())
+                    .then((k) => {
+                        if (k.get("access_token")) {
+                            localStorage.GithubAccessToken =
+                                k.get("access_token")
+                            editor
+                                .getModel()!
+                                .setValue(
+                                    localStorage.GithubNavigationCodeSnapshot
+                                )
+                            save()
+                        } else {
+                            alert("Failed to get access token")
+                        }
+                    })
+            }
+
+            const GistID = new URLSearchParams(location.search).get("gist")
+            if (GistID) {
+                fetch("https://api.github.com/gists/" + GistID)
+                    .then((data) => data.json())
+                    .then((data) => {
+                        editor
+                            .getModel()!
+                            .setValue(
+                                data?.files?.["main.circom"]?.content ||
+                                    "// Unable to load gist"
+                            )
+                        run()
+                    })
+            }
+
             const editor = monaco.editor.create(monacoEl.current!, {
-                value: codeExample,
+                value: GistID ? "// Loading from Github..." : codeExample,
                 language: "circom",
                 automaticLayout: true, // the important part
             })
+
             const run = () => {
                 if (!workerRef.current || workerRef.current!.running) {
                     if (workerRef.current) {
@@ -75,6 +116,50 @@ export default function App() {
                     code: editor.getValue(),
                 })
             }
+
+            const save = () => {
+                const GistID = new URLSearchParams(location.search).get("gist")
+                const logIn = () => {
+                    localStorage.GithubNavigationCodeSnapshot =
+                        editor.getValue()
+                    location.href =
+                        "https://github.com/login/oauth/authorize?client_id=85123c5a3a8a8f73f015&scope=gist"
+                }
+                if (localStorage.GithubAccessToken) {
+                    setRunning(true)
+                    fetch(
+                        GistID
+                            ? "https://api.github.com/gists/" + GistID
+                            : "https://api.github.com/gists",
+                        {
+                            method: "POST",
+                            body: JSON.stringify({
+                                files: {
+                                    "main.circom": {
+                                        content: editor.getValue(),
+                                    },
+                                },
+                            }),
+                            headers: {
+                                Authorization:
+                                    "token " + localStorage.GithubAccessToken,
+                            },
+                        }
+                    )
+                        .then((k) => k.json())
+                        .then((k) => {
+                            if (k.id) {
+                                history.replaceState(null, "", "/?gist=" + k.id)
+                            } else if (k.message === "Bad credentials") {
+                                logIn()
+                            }
+                            setRunning(false)
+                        })
+                } else {
+                    logIn()
+                }
+            }
+            editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyS, save)
             editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.Enter, run)
             editor.addCommand(monaco.KeyMod.Shift | monaco.KeyCode.Enter, run)
             editor.addCommand(
@@ -88,7 +173,7 @@ export default function App() {
                     }
                 }
             )
-            run()
+            if (!GistID) run()
             setEditor(editor)
         }
 
@@ -100,7 +185,7 @@ export default function App() {
             <div className="sidebar">
                 <div className="output">
                     <div className="label">
-                        Press Shift-Enter to compile and run Circom code
+                        Shift-Enter to run. Cmd-S to save to Github Gists.
                     </div>
                     <br />
                     {messages.map((m, i) => (
@@ -122,7 +207,11 @@ export default function App() {
                                                 >
                                                     {name}
                                                 </a>{" "}
-                                                ({data.length} bytes)
+                                                (
+                                                {(data.length / 1000).toFixed(
+                                                    2
+                                                )}
+                                                KB)
                                             </li>
                                         )
                                     )}
