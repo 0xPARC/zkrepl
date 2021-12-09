@@ -1,4 +1,10 @@
-import { WASI, WASIBindings, WASIExitError, WASIKillError } from "@wasmer/wasi"
+;(globalThis as any).process = {
+    cwd() {
+        return ""
+    },
+}
+
+import { WASI, WASIExitError, WASIKillError } from "circom2/vendor/wasi"
 import wasmURL from "circom2/circom.wasm?url"
 import * as path from "path-browserify"
 import wabtLoader from "wabt"
@@ -25,12 +31,6 @@ function randomFillSync<T>(buffer: T, offset: number, size: number): T {
         }
     }
     return buffer
-}
-
-;(globalThis as any).process = {
-    cwd() {
-        return ""
-    },
 }
 
 const browserBindings = {
@@ -90,6 +90,7 @@ async function bootWasm(code: string) {
     let writeBuffer = new Uint8Array(bufferSize)
     let writeBufferFd = -1
     let writeBufferOffset = 0
+    let writeBufferPos = 0
     const flushBuffer = () => {}
 
     let wasi = new WASI({
@@ -121,14 +122,18 @@ async function bootWasm(code: string) {
                     fd: number,
                     buf: Uint8Array,
                     offset: number,
-                    len: number
+                    len: number,
+                    pos: number
                 ) {
+                    // console.log(pos, writeBu)
                     if (
                         writeBufferFd === fd &&
-                        writeBufferOffset + len < bufferSize
+                        writeBufferOffset + len < bufferSize &&
+                        pos === writeBufferPos + writeBufferOffset
                     ) {
                         writeBuffer.set(buf, writeBufferOffset)
                         writeBufferOffset += len
+                        // writeBufferPos += len
                         return len
                     } else {
                         // console.log("resetting")
@@ -137,7 +142,8 @@ async function bootWasm(code: string) {
                                 writeBufferFd,
                                 writeBuffer,
                                 0,
-                                writeBufferOffset
+                                writeBufferOffset,
+                                writeBufferPos
                             )
                         }
                         writeBufferFd = fd
@@ -145,6 +151,7 @@ async function bootWasm(code: string) {
 
                         writeBuffer.set(buf, writeBufferOffset)
                         writeBufferOffset += len
+                        writeBufferPos = pos
                     }
                     return len
                 },
@@ -155,10 +162,12 @@ async function bootWasm(code: string) {
                             writeBufferFd,
                             writeBuffer,
                             0,
-                            writeBufferOffset
+                            writeBufferOffset,
+                            writeBufferPos
                         )
                         writeBufferFd = -1
                         writeBufferOffset = 0
+                        writeBufferPos = 0
                     }
                     if (fd >= 0) {
                         return wasmFs.fs.closeSync(fd)
