@@ -30,9 +30,9 @@ monaco.languages.registerHoverProvider("circom", {
             return {
                 range: new monaco.Range(
                     position.lineNumber,
-                    m.index,
+                    1 + m.index,
                     position.lineNumber,
-                    m.index + m[0].length
+                    1 + m.index + m[0].length
                 ),
                 contents: [{ value: result }],
             }
