@@ -1,4 +1,9 @@
-export default async function builder(code, options) {
+export default async function builder(
+    code: BufferSource,
+    options: {
+        log: (value: bigint) => void
+    }
+) {
     options = options || {}
 
     const wasmModule = await WebAssembly.compile(code)
@@ -7,7 +12,7 @@ export default async function builder(code, options) {
 
     const instance = await WebAssembly.instantiate(wasmModule, {
         runtime: {
-            exceptionHandler: function (code) {
+            exceptionHandler: function (code: number) {
                 let errStr
                 if (code == 1) {
                     errStr = "Signal not found. "
@@ -68,7 +73,10 @@ export default async function builder(code, options) {
 }
 
 class WitnessCalculator {
-    constructor(instance, sanityCheck) {
+    instance: WebAssembly.Instance
+    sanityCheck: boolean
+
+    constructor(instance: WebAssembly.Instance, sanityCheck: boolean) {
         this.instance = instance
 
         this.version = this.instance.exports.getVersion()
@@ -219,7 +227,7 @@ class WitnessCalculator {
     }
 }
 
-function toArray32(s, size) {
+function toArray32(s: number, size: number) {
     const res = [] //new Uint32Array(size); //has no unshift
     let rem = BigInt(s)
     const radix = BigInt(0x100000000)
@@ -237,7 +245,7 @@ function toArray32(s, size) {
     return res
 }
 
-function fromArray32(arr) {
+function fromArray32(arr: number[]) {
     //returns a BigInt
     var res = BigInt(0)
     const radix = BigInt(0x100000000)
@@ -247,12 +255,12 @@ function fromArray32(arr) {
     return res
 }
 
-function flatArray(a) {
-    var res = []
+function flatArray(a: number[]) {
+    var res: number[] = []
     fillArray(res, a)
     return res
 
-    function fillArray(res, a) {
+    function fillArray(res: number[], a: number[] | any[]) {
         if (Array.isArray(a)) {
             for (let i = 0; i < a.length; i++) {
                 fillArray(res, a[i])
@@ -263,11 +271,11 @@ function flatArray(a) {
     }
 }
 
-function fnvHash(str) {
+function fnvHash(str: string) {
     const uint64_max = BigInt(2) ** BigInt(64)
     let hash = BigInt("0xCBF29CE484222325")
     for (var i = 0; i < str.length; i++) {
-        hash ^= BigInt(str[i].charCodeAt())
+        hash ^= BigInt(str[i].charCodeAt(0))
         hash *= BigInt(0x100000001b3)
         hash %= uint64_max
     }

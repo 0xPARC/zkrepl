@@ -8,6 +8,7 @@ export default defineConfig({
     },
     define: {
         "global.TYPED_ARRAY_SUPPORT": "true",
+        "process.browser": "true",
     },
 
     build: {},

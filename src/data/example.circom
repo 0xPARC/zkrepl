@@ -1,4 +1,6 @@
-include "circomlib/mimc.circom";
+pragma circom 2.0.1;
+
+include "circomlib/poseidon.circom";
 
 template Example () {  
     signal input a;  
@@ -6,18 +8,15 @@ template Example () {
     signal output c;  
     
     c <== a * b;  
-    log(c);
+    
+    component hash = Poseidon(2);
+    hash.inputs[0] <== a;
+    hash.inputs[1] <== b;
 
-
-    component mimc = MiMC7(91);
-    mimc.x_in <== a;
-    mimc.k <== 22;
-    log(mimc.out);
-
-    log(111111111);  
+    log(hash.out);
 }
 
-component main = Example();
+component main { public [ a ] } = Example();
 
 /* INPUT = {
     "a": "2",

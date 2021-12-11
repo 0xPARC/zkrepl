@@ -1,6 +1,45 @@
 import * as monaco from "monaco-editor/esm/vs/editor/editor.api"
-
+import { circomWorker } from "./editor"
 monaco.languages.register({ id: "circom" })
+
+export let replyHover = (data: any) => {}
+
+monaco.languages.registerHoverProvider("circom", {
+    provideHover: async function (model, position) {
+        if ((circomWorker as any).running) return null
+
+        const haystack = model.getLineContent(position.lineNumber)
+        const titleMatcher = /[a-z]+\.[a-z]+(\[\d+\])?/g
+        const cursor = position.column
+        let m: RegExpExecArray | null
+        while ((m = titleMatcher.exec(haystack))) {
+            if (m.index > cursor) break
+            if (m.index + m[0].length < cursor) continue
+            const symbol = m[0]
+            const result: string = await new Promise((resolve) => {
+                replyHover = (data: any) => {
+                    resolve(data.text)
+                    replyHover = () => {}
+                }
+                circomWorker.postMessage({
+                    type: "hover",
+                    symbol: symbol,
+                })
+            })
+            // const result = "blah"
+            return {
+                range: new monaco.Range(
+                    position.lineNumber,
+                    m.index,
+                    position.lineNumber,
+                    m.index + m[0].length
+                ),
+                contents: [{ value: result }],
+            }
+        }
+        return null
+    },
+})
 
 monaco.languages.setLanguageConfiguration("circom", {
     wordPattern:
