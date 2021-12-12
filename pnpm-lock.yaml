@@ -2,6 +2,7 @@ lockfileVersion: 5.3
 
 specifiers:
   '@iden3/binfileutils': ^0.0.8
+  '@types/node': ^16.11.12
   '@types/path-browserify': ^1.0.0
   '@types/react': ^17.0.37
   '@types/react-dom': ^17.0.11
@@ -26,6 +27,7 @@ specifiers:
 
 dependencies:
   '@iden3/binfileutils': 0.0.8
+  '@types/node': 16.11.12
   '@wasmer/wasi': 0.12.0
   '@wasmer/wasmfs': 0.12.0
   ansi-to-react: 6.1.6_2036002bb690a3512dfaa86eb08e17b1
@@ -61,6 +63,10 @@ packages:
     dependencies:
       fastfile: 0.0.19
       ffjavascript: 0.2.46
+    dev: false
+
+  /@types/node/16.11.12:
+    resolution: {integrity: sha512-+2Iggwg7PxoO5Kyhvsq9VarmPbIelXP070HMImEpbtGCoyWNINQj4wzjbQCXzdHTRXnqufutJb5KAURZANNBAw==}
     dev: false
 
   /@types/path-browserify/1.0.0:

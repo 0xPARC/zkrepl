@@ -16,9 +16,9 @@ import { unzip } from "unzipit"
 import circomLib from "../data/circomlib.zip?url"
 import * as binFileUtils from "@iden3/binfileutils"
 import { readR1csHeader } from "r1csfile"
-import { Scalar, utils, BigBuffer } from "ffjavascript"
+import { Scalar } from "ffjavascript"
 
-console.log(wasmURL, circomLib)
+// console.log(wasmURL, circomLib, "joijoiasdf")
 
 const baseNow = Math.floor((Date.now() - performance.now()) * 1e-3)
 
@@ -29,6 +29,7 @@ function hrtime() {
     // return BigInt(seconds) * BigInt(1e9) + BigInt(nanoseconds)
     return (seconds * 1e9 + nanoseconds) as any
 }
+
 function randomFillSync<T>(buffer: T, offset: number, size: number): T {
     if (buffer instanceof Uint8Array) {
         for (let i = offset; i < offset + size; i++) {
@@ -243,7 +244,11 @@ async function bootWasm(code: string) {
     const r1csFile = wasmFs.fs.readFileSync("main.r1cs")
     const { fd: fdR1cs, sections: sectionsR1cs } =
         await binFileUtils.readBinFile(r1csFile, "r1cs", 1, 1 << 22, 1 << 24)
-    const r1cs: R1CSHeader = await readR1csHeader(fdR1cs, sectionsR1cs, false)
+    const r1cs = await readR1csHeader(
+        fdR1cs,
+        sectionsR1cs,
+        /* singleThread */ true
+    )
     await fdR1cs.close()
 
     if (r1cs.nOutputs > 0) {
@@ -296,21 +301,9 @@ async function bootWasm(code: string) {
     })
 }
 
-type R1CSHeader = {
-    curve: any
-    n8: number
-    nConstraints: number
-    nLabels: number
-    nOutputs: number
-    nPrvInputs: number
-    nPubInputs: number
-    nVars: number
-    prime: bigint
-}
-
 async function handleHover(symbol: string) {
     const wasmFs = await wasmFsPromise
-    const symFile = wasmFs.fs.readFileSync("main.sym", "utf8")
+    const symFile = wasmFs.fs.readFileSync("main.sym", "utf8") as string
     for (let line of symFile.split("\n")) {
         const parts = line.split(",")
         if (parts[3].endsWith(symbol)) {

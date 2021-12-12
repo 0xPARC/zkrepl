@@ -156,6 +156,8 @@ export default function App() {
                             workerRef.current!.running = false
                         } else if (data.type === "hover") {
                             return replyHover(data)
+                        } else if (data.type === "debug") {
+                            console.log(data.text)
                         }
                         setMessages((k) => [...k, data])
                     }

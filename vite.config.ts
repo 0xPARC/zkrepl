@@ -4,6 +4,7 @@ export default defineConfig({
     resolve: {
         alias: {
             "@wasmer/wasi/lib/polyfills/buffer": "./src/worker/buffer.ts",
+            "web-worker": "./src/worker/buffer.ts",
         },
     },
     define: {
