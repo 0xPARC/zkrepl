@@ -2,12 +2,12 @@ import{l as g,R as k,w as x,a as e,e as S,K as b,b as v,_ as N,c as A}from"./ven
 
 include "circomlib/poseidon.circom";
 
-template Example () {  
-    signal input a;  
-    signal input b;  
-    signal output c;  
+template Example () {
+    signal input a;
+    signal input b;
+    signal output c;
     
-    c <== a * b;  
+    c <== a * b;
     
     component hash = Poseidon(2);
     hash.inputs[0] <== a;
