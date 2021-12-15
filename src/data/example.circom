@@ -2,12 +2,12 @@ pragma circom 2.0.1;
 
 include "circomlib/poseidon.circom";
 
-template Example () {  
-    signal input a;  
-    signal input b;  
-    signal output c;  
+template Example () {
+    signal input a;
+    signal input b;
+    signal output c;
     
-    c <== a * b;  
+    c <== a * b;
     
     component hash = Poseidon(2);
     hash.inputs[0] <== a;

@@ -6,14 +6,14 @@
   "scripts": {
     "dev": "vite --port 4000",
     "build": "vite build",
-    "deploy": "echo 'zkrepl.kkwok.dev' > dist/CNAME && gh-pages -d dist"
+    "deploy": "echo 'zkrepl.dev' > dist/CNAME && gh-pages -d dist"
   },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/antimatter15/zkrepl.git"
   },
   "author": "",
-  "license": "ISC",
+  "license": "GPL-3.0",
   "bugs": {
     "url": "https://github.com/antimatter15/zkrepl/issues"
   },
