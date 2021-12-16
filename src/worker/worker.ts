@@ -324,9 +324,10 @@ async function handleHover(symbol: string) {
     const wasmFs = await wasmFsPromise
     const symFile = wasmFs.fs.readFileSync("main.sym", "utf8") as string
     // let symbolMatcher = (k: string) => k.endsWith(symbol)
-    let symbolMatcherRe = new RegExp("\\b" + escapeRegExp(symbol) + "\\b")
+    let symbolMatcherRe = new RegExp("\\b" + escapeRegExp(symbol) + "(\\b|$)")
     let symbolMatcher = (k: string) => symbolMatcherRe.test(k)
     let results: string[] = []
+
     // console.log(symFile)
     for (let line of symFile.split("\n")) {
         const parts = line.split(",")
@@ -355,8 +356,9 @@ async function handleHover(symbol: string) {
                 signalIndex * wtns.n8 + wtns.n8
             )
             results.push(
-                parts[3].replace("main.", "") +
-                    " = " +
+                "*" +
+                    parts[3].replace("main.", "") +
+                    " =* " +
                     Scalar.fromRprLE(b).toString()
             )
             // console.log(signalIndex, Array.from(b), parts, buffWitness)
