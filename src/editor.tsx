@@ -76,7 +76,7 @@ type Message = {
 export var circomWorker: Worker
 
 export default function App() {
-    const [running, setRunning] = React.useState(false)
+    const [running, setRunning] = React.useState<false | number>(false)
     const [messages, setMessages] = React.useState<Message[]>([])
     const [editor, setEditor] =
         React.useState<monaco.editor.IStandaloneCodeEditor | null>(null)
@@ -173,7 +173,7 @@ export default function App() {
                     }
                 }
                 workerRef.current!.running = true
-                setRunning(true)
+                setRunning(Math.random() + 1)
                 setMessages([])
                 workerRef.current.postMessage({
                     type: "run",
@@ -190,7 +190,7 @@ export default function App() {
                         "https://github.com/login/oauth/authorize?client_id=85123c5a3a8a8f73f015&scope=gist"
                 }
                 if (localStorage.GithubAccessToken) {
-                    setRunning(true)
+                    setRunning(Math.random() + 1)
                     fetch(
                         GistID
                             ? "https://api.github.com/gists/" + GistID
@@ -236,6 +236,13 @@ export default function App() {
                 function () {
                     console.log("Abort kernel!")
                     setRunning(false)
+                    setMessages((k) => [
+                        ...k,
+                        {
+                            type: "abort",
+                            text: "Execution manually interrupted",
+                        },
+                    ])
                     if (workerRef.current) {
                         workerRef.current.terminate()
                         workerRef.current = null
@@ -288,7 +295,7 @@ export default function App() {
                             )}
                         </div>
                     ))}
-                    {running ? <LoadingIndicator /> : null}
+                    {running ? <LoadingIndicator key={running} /> : null}
                 </div>
             </div>
         </div>
@@ -312,7 +319,9 @@ function LoadingIndicator() {
                 <div></div>
                 <div></div>
             </div>
-            <div className="time">{(time / 1000).toFixed(2)}s</div>
+            {time > 200 && (
+                <div className="time">{(time / 1000).toFixed(2)}s</div>
+            )}
         </div>
     )
 }
