@@ -13,6 +13,37 @@ monaco.languages.registerHoverProvider("circom", {
             /([a-z$_][a-z0-9$_]*)(\.[a-z$_][a-z0-9$_]*)*(\[\d+\])?/g
         const cursor = position.column
         let m: RegExpExecArray | null
+
+        m = /(include\s+)"([^"]+)"/g.exec(haystack)
+        if (m) {
+            let contents = []
+
+            if (m[2].startsWith("circomlib/")) {
+                contents.push({
+                    value: `[View Source](https://github.com/iden3/circomlib/blob/master/circuits/${m[2].replace(
+                        "circomlib/",
+                        ""
+                    )})`,
+                })
+            } else if (m[2].startsWith("gist:")) {
+                contents.push({
+                    value: `[View Source](https://gist.github.com/${m[2].replace(
+                        "gist:",
+                        ""
+                    )})`,
+                })
+            }
+            return {
+                range: new monaco.Range(
+                    position.lineNumber,
+                    1 + m.index + m[1].length,
+                    position.lineNumber,
+                    1 + m.index + m[0].length
+                ),
+                contents: contents,
+            }
+        }
+
         while ((m = signalMatcher.exec(haystack))) {
             if (m.index > cursor) break
             if (m.index + m[0].length < cursor) continue
@@ -37,6 +68,7 @@ monaco.languages.registerHoverProvider("circom", {
                 contents: [{ value: result }],
             }
         }
+
         return null
     },
 })
