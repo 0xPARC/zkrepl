@@ -11,6 +11,8 @@ export default defineConfig({
         "global.TYPED_ARRAY_SUPPORT": "true",
         "process.browser": "true",
     },
-
-    build: {},
+    base: "",
+    build: {
+        assetsDir: "",
+    },
 })

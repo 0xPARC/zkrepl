@@ -6,14 +6,13 @@
 import { Buffer } from "buffer-es6"
 ;(globalThis as any).Buffer = Buffer
 
-import wasmURL from "circom2/circom.wasm?url"
-
 import { WASI, WASIExitError, WASIKillError } from "circom2/vendor/wasi"
 import * as path from "path-browserify"
-
 import { WasmFs } from "@wasmer/wasmfs"
 import { unzip } from "unzipit"
+
 import circomLib from "../data/circomlib.zip?url"
+import wasmURL from "circom2/circom.wasm?url"
 
 const baseNow = Math.floor((Date.now() - performance.now()) * 1e-3)
 

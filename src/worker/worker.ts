@@ -18,7 +18,7 @@ async function bootWasm(code: string) {
     await runCircom()
 
     const stderr = wasmFs.fs.readFileSync("/dev/stderr", "utf8")
-    console.log(stderr)
+    // console.log(stderr)
     if (stderr) postMessage({ type: "stderr", text: stderr })
 
     let stdout = await wasmFs.getStdOut()
@@ -31,12 +31,11 @@ async function bootWasm(code: string) {
             )}s`,
     })
 
-    console.log(stdout)
+    // console.log(stdout)
 
     const wabt = await wabtLoader()
     const watData = wasmFs.fs.readFileSync("main_js/main.wat")
 
-    // console.log(new TextDecoder().decode(watData))
     const module = wabt.parseWat("main.wat", watData)
     module.resolveNames()
     module.validate()
@@ -114,7 +113,7 @@ async function bootWasm(code: string) {
 
         await fdWtns.close()
     }
-    console.log(r1cs)
+    // console.log(r1cs)
 
     postMessage({
         type: "Artifacts",
