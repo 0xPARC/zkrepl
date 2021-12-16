@@ -9,11 +9,11 @@ monaco.languages.registerHoverProvider("circom", {
         if ((circomWorker as any).running) return null
 
         const haystack = model.getLineContent(position.lineNumber)
-        // const titleMatcher = /[a-z]+\.[a-z]+(\[\d+\])?/g
-        const titleMatcher = /[a-z]+(\.[a-z]+)*(\[\d+\])?/g
+        const signalMatcher =
+            /([a-z$_][a-z0-9$_]*)(\.[a-z$_][a-z0-9$_]*)*(\[\d+\])?/g
         const cursor = position.column
         let m: RegExpExecArray | null
-        while ((m = titleMatcher.exec(haystack))) {
+        while ((m = signalMatcher.exec(haystack))) {
             if (m.index > cursor) break
             if (m.index + m[0].length < cursor) continue
             const symbol = m[0]
@@ -27,7 +27,6 @@ monaco.languages.registerHoverProvider("circom", {
                     symbol: symbol,
                 })
             })
-            // const result = "blah"
             return {
                 range: new monaco.Range(
                     position.lineNumber,
@@ -247,55 +246,3 @@ monaco.languages.setMonarchTokensProvider("circom", {
         ],
     },
 })
-
-// Define a new theme that contains only rules that match this language
-// monaco.editor.defineTheme("myCoolTheme", {
-//     base: "vs",
-//     inherit: false,
-//     rules: [
-//         { token: "custom-info", foreground: "808080" },
-//         { token: "custom-error", foreground: "ff0000", fontStyle: "bold" },
-//         { token: "custom-notice", foreground: "FFA500" },
-//         { token: "custom-date", foreground: "008800" },
-//     ],
-//     colors: {
-//         "editor.foreground": "#000000",
-//     },
-// })
-
-// Register a completion item provider for the new language
-// monaco.languages.registerCompletionItemProvider("circom", {
-//     provideCompletionItems: () => {
-//         var suggestions = [
-//             {
-//                 label: "simpleText",
-//                 kind: monaco.languages.CompletionItemKind.Text,
-//                 insertText: "simpleText",
-//             },
-//             {
-//                 label: "testing",
-//                 kind: monaco.languages.CompletionItemKind.Keyword,
-//                 insertText: "testing(${1:condition})",
-//                 insertTextRules:
-//                     monaco.languages.CompletionItemInsertTextRule
-//                         .InsertAsSnippet,
-//             },
-//             {
-//                 label: "ifelse",
-//                 kind: monaco.languages.CompletionItemKind.Snippet,
-//                 insertText: [
-//                     "if (${1:condition}) {",
-//                     "\t$0",
-//                     "} else {",
-//                     "\t",
-//                     "}",
-//                 ].join("\n"),
-//                 insertTextRules:
-//                     monaco.languages.CompletionItemInsertTextRule
-//                         .InsertAsSnippet,
-//                 documentation: "If-Else Statement",
-//             },
-//         ]
-//         return { suggestions: suggestions }
-//     },
-// })

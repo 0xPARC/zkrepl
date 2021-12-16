@@ -10,7 +10,7 @@ export default async function builder(
 
     let wc
 
-    const instance = await WebAssembly.instantiate(wasmModule, {
+    const instance = (await WebAssembly.instantiate(wasmModule, {
         runtime: {
             exceptionHandler: function (code: number) {
                 let errStr
@@ -35,7 +35,7 @@ export default async function builder(
                 printSharedRWMemory()
             },
         },
-    })
+    })) as WitnessWasmInstance
 
     const sanityCheck = true
     //        options &&
@@ -72,12 +72,35 @@ export default async function builder(
     }
 }
 
+type WitnessWasmInstance = WebAssembly.Instance & {
+    exports: {
+        getVersion: () => number
+        getFieldNumLen32: () => number
+        getWitnessSize: () => number
+        getRawPrime: () => void
+        getMessageChar: () => number
+        writeSharedRWMemory: (i: number, v: number) => void
+        readSharedRWMemory: (i: number) => number
+        setInputSignal: (hMSB: number, hLSB: number, i: number) => void
+        getWitness: (i: number) => void
+        getSignal: (i: number) => void
+        init: (sanityCheck: number) => void
+    }
+}
+
+type Input = Record<string, any>
+
 class WitnessCalculator {
-    instance: WebAssembly.Instance
+    instance: WitnessWasmInstance
+    version: number
+    n32: number
+    witnessSize: number
+    prime: bigint
+
     sanityCheck: boolean
 
     constructor(instance: WebAssembly.Instance, sanityCheck: boolean) {
-        this.instance = instance
+        this.instance = instance as any
 
         this.version = this.instance.exports.getVersion()
         this.n32 = this.instance.exports.getFieldNumLen32()
@@ -98,7 +121,7 @@ class WitnessCalculator {
         return this.instance.exports.getVersion()
     }
 
-    async _doCalculateWitness(input, sanityCheck) {
+    async _doCalculateWitness(input: Input, sanityCheck: boolean) {
         //input is assumed to be a map from signals to arrays of bigints
         this.instance.exports.init(this.sanityCheck || sanityCheck ? 1 : 0)
         const keys = Object.keys(input)
@@ -117,7 +140,7 @@ class WitnessCalculator {
                 }
                 try {
                     this.instance.exports.setInputSignal(hMSB, hLSB, i)
-                } catch (err) {
+                } catch (err: any) {
                     // console.log(`After adding signal ${i} of ${k}`)
                     // throw new Error(err)
                     if (err.message.includes("Signal not found.")) {
@@ -130,7 +153,7 @@ class WitnessCalculator {
         })
     }
 
-    async calculateWitness(input, sanityCheck) {
+    async calculateWitness(input: Input, sanityCheck: boolean) {
         const w = []
 
         await this._doCalculateWitness(input, sanityCheck)
@@ -148,7 +171,7 @@ class WitnessCalculator {
         return w
     }
 
-    async calculateBinWitness(input, sanityCheck) {
+    async calculateBinWitness(input: Input, sanityCheck: boolean) {
         const buff32 = new Uint32Array(this.witnessSize * this.n32)
         const buff = new Uint8Array(buff32.buffer)
         await this._doCalculateWitness(input, sanityCheck)
@@ -163,7 +186,7 @@ class WitnessCalculator {
         return buff
     }
 
-    async calculateWTNSBin(input, sanityCheck) {
+    async calculateWTNSBin(input: Input, sanityCheck: boolean) {
         const buff32 = new Uint32Array(
             this.witnessSize * this.n32 + this.n32 + 11
         )
@@ -249,7 +272,7 @@ function toArray32(s: number, size: number) {
     return res
 }
 
-function fromArray32(arr: number[]) {
+function fromArray32(arr: Uint32Array | number[]) {
     //returns a BigInt
     var res = BigInt(0)
     const radix = BigInt(0x100000000)

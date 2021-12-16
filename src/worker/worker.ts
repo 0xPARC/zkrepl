@@ -261,7 +261,7 @@ async function bootWasm(code: string) {
         })
     }
 
-    wtnsFile = await witness.calculateWTNSBin(inputObj, null)
+    wtnsFile = await witness.calculateWTNSBin(inputObj, true)
 
     if (logs.length > 0) postMessage({ type: "log", text: logs.join("\n") })
     // console.log(witness)
