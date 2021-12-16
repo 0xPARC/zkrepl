@@ -203,7 +203,7 @@ export default function App() {
                         },
                     }
                     if (GistID) {
-                        filesObj["about.md"] = {
+                        filesObj["about_zkrepl.md"] = {
                             content:
                                 `Open this in [zkREPL →](https://zkrepl.dev/?gist=${GistID})\n\n` +
                                 'This file can be included into other zkREPLs with ```include "gist:' +
