@@ -8,6 +8,8 @@ template Example () {
     signal output c;
     
     c <== a * b;
+
+    assert(a > 2);
     
     component hash = Poseidon(2);
     hash.inputs[0] <== a;
@@ -19,6 +21,6 @@ template Example () {
 component main { public [ a ] } = Example();
 
 /* INPUT = {
-    "a": "2",
+    "a": "5",
     "b": "77"
 } */

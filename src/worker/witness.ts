@@ -37,7 +37,7 @@ export default async function builder(
         },
     })
 
-    const sanityCheck = options
+    const sanityCheck = true
     //        options &&
     //        (
     //            options.sanityCheck ||
@@ -119,7 +119,12 @@ class WitnessCalculator {
                     this.instance.exports.setInputSignal(hMSB, hLSB, i)
                 } catch (err) {
                     // console.log(`After adding signal ${i} of ${k}`)
-                    throw new Error(err)
+                    // throw new Error(err)
+                    if (err.message.includes("Signal not found.")) {
+                        throw new Error(`Unexpected input signal "${k}".`)
+                    } else {
+                        throw new Error(err)
+                    }
                 }
             }
         })
@@ -155,7 +160,6 @@ class WitnessCalculator {
                 buff32[pos + j] = this.instance.exports.readSharedRWMemory(j)
             }
         }
-
         return buff
     }
 

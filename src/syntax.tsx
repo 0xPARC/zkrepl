@@ -9,7 +9,8 @@ monaco.languages.registerHoverProvider("circom", {
         if ((circomWorker as any).running) return null
 
         const haystack = model.getLineContent(position.lineNumber)
-        const titleMatcher = /[a-z]+\.[a-z]+(\[\d+\])?/g
+        // const titleMatcher = /[a-z]+\.[a-z]+(\[\d+\])?/g
+        const titleMatcher = /[a-z]+(\.[a-z]+)*(\[\d+\])?/g
         const cursor = position.column
         let m: RegExpExecArray | null
         while ((m = titleMatcher.exec(haystack))) {

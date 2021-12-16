@@ -230,17 +230,6 @@ async function bootWasm(code: string) {
         },
     })
 
-    const input = /\/*\s*INPUT\s*=\s*(\{[\s\S]+\})\s*\*\//.exec(code)
-
-    let inputObj = {}
-    if (input) {
-        inputObj = JSON.parse(input[1])
-    }
-    wtnsFile = await witness.calculateWTNSBin(inputObj, null)
-
-    if (logs.length > 0) postMessage({ type: "log", text: logs.join("\n") })
-    // console.log(witness)
-
     const r1csFile = wasmFs.fs.readFileSync("main.r1cs")
     const { fd: fdR1cs, sections: sectionsR1cs } =
         await binFileUtils.readBinFile(r1csFile, "r1cs", 1, 1 << 22, 1 << 24)
@@ -250,6 +239,32 @@ async function bootWasm(code: string) {
         /* singleThread */ true
     )
     await fdR1cs.close()
+
+    const input = /\/*\s*INPUT\s*=\s*(\{[\s\S]+\})\s*\*\//.exec(code)
+    let inputObj = {}
+    if (input) {
+        inputObj = JSON.parse(input[1])
+        if (r1cs.nPrvInputs + r1cs.nPubInputs > Object.keys(inputObj).length) {
+            postMessage({
+                type: "stderr",
+                text: `Expected ${r1cs.nPrvInputs} private inputs and ${
+                    r1cs.nPubInputs
+                } public inputs, but only found ${
+                    Object.keys(inputObj).length
+                } inputs`,
+            })
+        }
+    } else if (r1cs.nPrvInputs + r1cs.nPubInputs > 0) {
+        postMessage({
+            type: "stderr",
+            text: `To specify inputs, add to your circuit: \n\nINPUT = { "a": "1234" }`,
+        })
+    }
+
+    wtnsFile = await witness.calculateWTNSBin(inputObj, null)
+
+    if (logs.length > 0) postMessage({ type: "log", text: logs.join("\n") })
+    // console.log(witness)
 
     if (r1cs.nOutputs > 0) {
         const { fd: fdWtns, sections: sectionsWtns } =
@@ -301,12 +316,23 @@ async function bootWasm(code: string) {
     })
 }
 
+function escapeRegExp(string: string) {
+    return string.replace(/[.*+?^${}()|[\]\\]/g, "\\$&") // $& means the whole matched string
+}
+
 async function handleHover(symbol: string) {
     const wasmFs = await wasmFsPromise
     const symFile = wasmFs.fs.readFileSync("main.sym", "utf8") as string
+    // let symbolMatcher = (k: string) => k.endsWith(symbol)
+    let symbolMatcherRe = new RegExp("\\b" + escapeRegExp(symbol) + "\\b")
+    let symbolMatcher = (k: string) => symbolMatcherRe.test(k)
+    let results: string[] = []
+    // console.log(symFile)
     for (let line of symFile.split("\n")) {
         const parts = line.split(",")
-        if (parts[3].endsWith(symbol)) {
+        // parts = [labelIndex, varIndex, componentIndex, name]
+
+        if (parts[3] && symbolMatcher(parts[3])) {
             const { fd: fdWtns, sections: sectionsWtns } =
                 await binFileUtils.readBinFile(
                     wtnsFile,
@@ -328,13 +354,22 @@ async function handleHover(symbol: string) {
                 signalIndex * wtns.n8,
                 signalIndex * wtns.n8 + wtns.n8
             )
-            postMessage({ type: "hover", text: Scalar.fromRprLE(b).toString() })
+            results.push(
+                parts[3].replace("main.", "") +
+                    " = " +
+                    Scalar.fromRprLE(b).toString()
+            )
+            // console.log(signalIndex, Array.from(b), parts, buffWitness)
 
             await fdWtns.close()
 
-            return
+            if (results.length > 3) {
+                results.push("...")
+                break
+            }
         }
     }
+    postMessage({ type: "hover", text: results.join("\n\n") })
     // console.log(symFile)
 }
 
@@ -346,7 +381,10 @@ onmessage = (e: MessageEvent) => {
             postMessage({ type: "fail", text: err.message })
         })
     } else if (data.type === "hover") {
-        handleHover(data.symbol).catch((err) => {})
+        handleHover(data.symbol).catch((err) => {
+            console.log("hover err", err)
+            postMessage({ type: "hover", text: "" })
+        })
     }
 }
 
