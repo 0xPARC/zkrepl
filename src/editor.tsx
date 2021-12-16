@@ -71,6 +71,7 @@ type Message = {
     type: string
     text: string
     files?: Record<string, Uint8Array>
+    url?: string
 }
 
 export var circomWorker: Worker
@@ -189,8 +190,27 @@ export default function App() {
                     location.href =
                         "https://github.com/login/oauth/authorize?client_id=85123c5a3a8a8f73f015&scope=gist"
                 }
-                if (localStorage.GithubAccessToken) {
+                const code = editor.getValue()
+                if (history.state === code) {
+                    // do nothing!
+                    console.log("Already saved!")
+                } else if (localStorage.GithubAccessToken) {
                     setRunning(Math.random() + 1)
+
+                    const filesObj: Record<string, { content: string }> = {
+                        "main.circom": {
+                            content: code,
+                        },
+                    }
+                    if (GistID) {
+                        filesObj["about.md"] = {
+                            content:
+                                `Open this in [zkREPL →](https://zkrepl.dev/?gist=${GistID})\n\n` +
+                                'This file can be included into other zkREPLs with ```include "gist:' +
+                                GistID +
+                                '";```',
+                        }
+                    }
                     fetch(
                         GistID
                             ? "https://api.github.com/gists/" + GistID
@@ -198,11 +218,7 @@ export default function App() {
                         {
                             method: "POST",
                             body: JSON.stringify({
-                                files: {
-                                    "main.circom": {
-                                        content: editor.getValue(),
-                                    },
-                                },
+                                files: filesObj,
                             }),
                             headers: {
                                 Authorization:
@@ -213,7 +229,16 @@ export default function App() {
                         .then((k) => k.json())
                         .then((k) => {
                             if (k.id) {
-                                history.replaceState(null, "", "/?gist=" + k.id)
+                                history.replaceState(code, "", "/?gist=" + k.id)
+
+                                setMessages((m) => [
+                                    ...m,
+                                    {
+                                        type: "save",
+                                        url: `https://gist.github.com/${k.id}`,
+                                        text: `Saved to Github`,
+                                    },
+                                ])
                             } else if (k.message === "Bad credentials") {
                                 logIn()
                             } else if (k.message === "Not Found" && GistID) {
@@ -267,7 +292,14 @@ export default function App() {
                     {messages.map((m, i) => (
                         <div key={i}>
                             <div className="label">{m.type}: </div>
-                            <Ansi>{m.text}</Ansi>
+
+                            {m.url ? (
+                                <a href={m.url}>
+                                    <Ansi>{m.text}</Ansi>
+                                </a>
+                            ) : (
+                                <Ansi>{m.text}</Ansi>
+                            )}
                             {m.files && (
                                 <div className="files">
                                     {Object.entries(m.files).map(
