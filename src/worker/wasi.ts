@@ -73,6 +73,10 @@ async function initFS() {
             name.replace("circomlib-master/circuits/", "circomlib/"),
             new Uint8Array(arrayBuffer)
         )
+        wasmFs.fs.writeFileSync(
+            name.replace("circomlib-master/circuits/", "circomlib/circuits/"),
+            new Uint8Array(arrayBuffer)
+        )
     }
     return wasmFs
 }
