@@ -64,6 +64,7 @@ import * as monaco from "monaco-editor/esm/vs/editor/editor.api"
 // importing raw urls from webworkers in production builds
 import wasmURL from "circom2/circom.wasm?url"
 import circomLib from "./data/circomlib.zip?url"
+
 import { replyHover } from "./syntax"
 console.log(circomLib, wasmURL)
 
@@ -285,12 +286,23 @@ export default function App() {
             <div className="editor" ref={monacoEl}></div>
             <div className="sidebar">
                 <div className="output">
-                    <div className="label">
-                        Shift-Enter to run. Cmd-S to save to Github Gists.
+                    <div className="heading">
+                        <div className="description">
+                            Shift-Enter to run. <br />
+                            Cmd-S to save to Github Gists.
+                        </div>
+                        <img
+                            className="logo"
+                            src={new URL(
+                                "./data/logo.png",
+                                import.meta.url
+                            ).toString()}
+                            alt="zkrepl"
+                        />
                     </div>
                     <br />
                     {messages.map((m, i) => (
-                        <div key={i}>
+                        <div key={i} className="message">
                             <div className="label">{m.type}: </div>
 
                             {m.url ? (

@@ -4,11 +4,15 @@ body {
 }
 
 body {
-    background: #222;
+    background: #202030;
     color: white;
 }
 a {
     color: white;
+    text-decoration: none;
+    &:hover {
+        text-decoration: underline;
+    }
 }
 
 * {
@@ -18,6 +22,11 @@ a {
 .editor {
     width: 70vw;
     height: 100vh;
+}
+
+code {
+    font-family: inherit;
+    font-size: small;
 }
 
 body {
@@ -36,19 +45,38 @@ body {
     flex-direction: column;
 }
 
+.heading {
+    background: #303052;
+    color: white;
+    padding: 10px 20px;
+    font-size: small;
+    text-transform: uppercase;
+    display: flex;
+    gap: 10px;
+
+    .description {
+        flex: 1;
+    }
+    .logo {
+        width: 30px;
+        height: 30px;
+    }
+}
 .output {
-    padding: 10px;
     flex: 1;
     white-space: pre-wrap;
     word-wrap: break-word;
     overflow-y: scroll;
-
+    .message {
+        padding-bottom: 10px;
+    }
     code {
         display: block;
         padding-left: 20px;
-        padding-bottom: 10px;
     }
+
     .label {
+        padding: 0 10px;
         color: gray;
         font-size: small;
         text-transform: uppercase;
@@ -76,7 +104,7 @@ body {
     width: 13px;
     height: 13px;
     border-radius: 50%;
-    background: rgb(146, 146, 146);
+    background: #ef0990;
     animation-timing-function: cubic-bezier(0, 1, 1, 0);
 }
 .lds-ellipsis div:nth-child(1) {
