@@ -86,6 +86,7 @@ export default function App() {
     const workerRef = React.useRef<(Worker & { running?: boolean }) | null>(
         null
     )
+    const GistID = new URLSearchParams(location.search).get("gist")
 
     React.useEffect(() => {
         if (monacoEl && !editor) {
@@ -114,7 +115,6 @@ export default function App() {
                     })
             }
 
-            const GistID = new URLSearchParams(location.search).get("gist")
             if (GistID) {
                 fetch("https://api.github.com/gists/" + GistID)
                     .then((data) => data.json())
@@ -288,8 +288,18 @@ export default function App() {
                 <div className="output">
                     <div className="heading">
                         <div className="description">
-                            Shift-Enter to run. <br />
-                            Cmd-S to save to Github Gists.
+                            <b>Shift-Enter</b> to run <br />
+                            <b>Cmd-S</b> to save as{" "}
+                            {GistID ? (
+                                <a
+                                    href={`https://gist.github.com/${GistID}`}
+                                    target="_blank"
+                                >
+                                    Github Gist
+                                </a>
+                            ) : (
+                                "Github Gist"
+                            )}
                         </div>
                         <img
                             className="logo"

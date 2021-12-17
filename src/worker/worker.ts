@@ -114,11 +114,22 @@ async function bootWasm(code: string) {
             sectionsWtns,
             2
         )
+        const symFile = (
+            wasmFs.fs.readFileSync("main.sym", "utf8") as string
+        ).split("\n")
 
         const outputSignals = []
         for (let i = 1; i <= r1cs.nOutputs; i++) {
+            let outputPrefix = ""
+            const outputLine = symFile.find((k) => k.split(",")[0] === i + "")
+            // parts = [labelIndex, varIndex, componentIndex, name]
+            if (outputLine) {
+                outputPrefix =
+                    outputLine.split(",")[3].replace("main.", "") + " = "
+            }
+
             const b = buffWitness.slice(i * wtns.n8, i * wtns.n8 + wtns.n8)
-            outputSignals.push(Scalar.fromRprLE(b).toString())
+            outputSignals.push(outputPrefix + Scalar.fromRprLE(b).toString())
         }
 
         postMessage({
