@@ -148,6 +148,7 @@ async function bootWasm(code: string) {
             "main.wtns": wtnsFile,
             "main.wasm": binary.buffer,
             "main.r1cs": r1csFile,
+            "main.sym": wasmFs.fs.readFileSync("main.sym"),
         },
     })
 
