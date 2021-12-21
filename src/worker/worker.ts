@@ -77,13 +77,18 @@ async function bootWasm(code: string) {
     let inputObj: Record<string, string | string[]> = {}
     if (input) {
         inputObj = JSON.parse(input[1])
-        const numInputs = Object.keys(inputObj)
-            .map((k) => (Array.isArray(inputObj[k]) ? inputObj[k].length : 1))
-            .reduce((a, b) => a + b, 0)
+
+        const countEntries = (arr: any): number =>
+            Array.isArray(arr)
+                ? arr.map(countEntries).reduce((a, b) => a + b)
+                : 1
+        const numInputs = countEntries(Object.values(inputObj))
         if (r1cs.nPrvInputs + r1cs.nPubInputs > numInputs) {
             postMessage({
                 type: "stderr",
-                text: `Expected ${r1cs.nPrvInputs} private inputs and ${r1cs.nPubInputs} public inputs, but only found ${numInputs} inputs`,
+                text: `Expected ${r1cs.nPrvInputs + r1cs.nPubInputs} inputs (${
+                    r1cs.nPubInputs
+                } public), but only ${numInputs} inputs were provided`,
             })
         }
     } else if (r1cs.nPrvInputs + r1cs.nPubInputs > 0) {
