@@ -77,20 +77,6 @@ async function bootWasm(code: string) {
     let inputObj: Record<string, string | string[]> = {}
     if (input) {
         inputObj = JSON.parse(input[1])
-
-        const countEntries = (arr: any): number =>
-            Array.isArray(arr)
-                ? arr.map(countEntries).reduce((a, b) => a + b)
-                : 1
-        const numInputs = countEntries(Object.values(inputObj))
-        if (r1cs.nPrvInputs + r1cs.nPubInputs > numInputs) {
-            postMessage({
-                type: "stderr",
-                text: `Expected ${r1cs.nPrvInputs + r1cs.nPubInputs} inputs (${
-                    r1cs.nPubInputs
-                } public), but only ${numInputs} inputs were provided`,
-            })
-        }
     } else if (r1cs.nPrvInputs + r1cs.nPubInputs > 0) {
         postMessage({
             type: "stderr",
@@ -119,24 +105,31 @@ async function bootWasm(code: string) {
             sectionsWtns,
             2
         )
-        const symFile = (
-            wasmFs.fs.readFileSync("main.sym", "utf8") as string
-        ).split("\n")
 
-        const outputSignals = []
-        for (let i = 1; i <= r1cs.nOutputs; i++) {
-            let outputPrefix = ""
-            const outputLine = symFile.find((k) => k.split(",")[0] === i + "")
-            // parts = [labelIndex, varIndex, componentIndex, name]
-            if (outputLine) {
-                outputPrefix =
-                    outputLine.split(",")[3].replace("main.", "") + " = "
+        const symFile = wasmFs.fs.readFileSync("main.sym") as Uint8Array
+        let lastPos = 0
+        let dec = new TextDecoder("utf-8")
+        let outputPrefixes: Record<number, string> = {}
+        for (let i = 0; i < symFile.length; i++) {
+            if (symFile[i] === 0x0a) {
+                let line = dec.decode(symFile.slice(lastPos, i))
+                let wireNo = +line.split(",")[0]
+
+                if (wireNo <= r1cs.nOutputs) {
+                    outputPrefixes[wireNo] =
+                        line.split(",")[3].replace("main.", "") + " = "
+                }
+
+                lastPos = i
             }
-
-            const b = buffWitness.slice(i * wtns.n8, i * wtns.n8 + wtns.n8)
-            outputSignals.push(outputPrefix + Scalar.fromRprLE(b).toString())
         }
 
+        let outputSignals = []
+        for (let i = 1; i <= r1cs.nOutputs; i++) {
+            const b = buffWitness.slice(i * wtns.n8, i * wtns.n8 + wtns.n8)
+            const outputPrefix = outputPrefixes[i] || ""
+            outputSignals.push(outputPrefix + Scalar.fromRprLE(b).toString())
+        }
         postMessage({
             type: "Output",
             text: outputSignals.join("\n"),
@@ -171,16 +164,19 @@ function escapeRegExp(string: string) {
 
 async function handleHover(symbol: string) {
     const wasmFs = await wasmFsPromise
-    const symFile = wasmFs.fs.readFileSync("main.sym", "utf8") as string
-    // let symbolMatcher = (k: string) => k.endsWith(symbol)
+
     let symbolMatcherRe = new RegExp("\\b" + escapeRegExp(symbol) + "(\\b|$)")
     let symbolMatcher = (k: string) => symbolMatcherRe.test(k)
     let results: string[] = []
 
-    // console.log(symFile)
-    for (let line of symFile.split("\n")) {
+    const symFile = wasmFs.fs.readFileSync("main.sym") as Uint8Array
+    let lastPos = 0
+    let dec = new TextDecoder("utf-8")
+
+    for (let i = 0; i < symFile.length; i++) {
+        if (symFile[i] !== 0x0a) continue
+        let line = dec.decode(symFile.slice(lastPos, i))
         const parts = line.split(",")
-        // parts = [labelIndex, varIndex, componentIndex, name]
 
         if (parts[3] && symbolMatcher(parts[3])) {
             const { fd: fdWtns, sections: sectionsWtns } =
@@ -210,7 +206,6 @@ async function handleHover(symbol: string) {
                     " =* " +
                     Scalar.fromRprLE(b).toString()
             )
-            // console.log(signalIndex, Array.from(b), parts, buffWitness)
 
             await fdWtns.close()
 
@@ -219,7 +214,10 @@ async function handleHover(symbol: string) {
                 break
             }
         }
+
+        lastPos = i + 1
     }
+
     postMessage({ type: "hover", text: results.join("\n\n") })
     // console.log(symFile)
 }
