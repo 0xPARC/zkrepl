@@ -4,6 +4,8 @@ import { runCircom, wasmFsPromise } from "./wasi"
 import * as binFileUtils from "@iden3/binfileutils"
 import { readR1csHeader } from "r1csfile"
 import { Scalar } from "ffjavascript"
+import groth16SolidityVerifierTemplate from "../data/groth16.sol?raw"
+
 // import { buildThreadManager } from "ffjavascript/src/threadman"
 
 // console.log(buildThreadManager)
@@ -260,24 +262,24 @@ async function generateProvingKey() {
     await fdR1cs.close()
 
     const pots = [
-        // {
-        //     url: "https://dweb.link/ipfs/bafybeierwc3pmc2id2zfpgb42njkzvvvj4s333dcq4gr5ri2ixa6vuxi6a",
-        //     name: "powersOfTau28_hez_final_11.ptau",
-        //     maxConstraints: 1 << 11,
-        //     size: 2442392,
-        // },
-        // {
-        //     url: "https://cloudflare-ipfs.com/ipfs/bafybeibyoizq4sfp7sfomoofgczak3lgispbvviljjgdpchsxjrb4p6qsi",
-        //     name: "powersOfTau28_hez_final_12.ptau",
-        //     maxConstraints: 1 << 12,
-        //     size: 4801688,
-        // },
-        // {
-        //     url: "https://cloudflare-ipfs.com/ipfs/bafybeiderqjodw2mc6m5fqnc7edsun5eu4niupyw3cdsiruospa66y5vam",
-        //     name: "powersOfTau28_hez_final_13.ptau",
-        //     maxConstraints: 1 << 13,
-        //     size: 9520280,
-        // },
+        {
+            url: "https://cloudflare-ipfs.com/ipfs/bafybeierwc3pmc2id2zfpgb42njkzvvvj4s333dcq4gr5ri2ixa6vuxi6a",
+            name: "powersOfTau28_hez_final_11.ptau",
+            maxConstraints: 1 << 11,
+            size: 2442392,
+        },
+        {
+            url: "https://cloudflare-ipfs.com/ipfs/bafybeibyoizq4sfp7sfomoofgczak3lgispbvviljjgdpchsxjrb4p6qsi",
+            name: "powersOfTau28_hez_final_12.ptau",
+            maxConstraints: 1 << 12,
+            size: 4801688,
+        },
+        {
+            url: "https://cloudflare-ipfs.com/ipfs/bafybeiderqjodw2mc6m5fqnc7edsun5eu4niupyw3cdsiruospa66y5vam",
+            name: "powersOfTau28_hez_final_13.ptau",
+            maxConstraints: 1 << 13,
+            size: 9520280,
+        },
         {
             url: "https://cloudflare-ipfs.com/ipfs/bafybeihuh2cuustfaraum3txs2scrl5vaukkc6u5ztf27jlyx5xhtsz5ti",
             name: "powersOfTau28_hez_final_14.ptau",
@@ -297,7 +299,7 @@ async function generateProvingKey() {
             size: 75580568,
         },
         {
-            url: "https://cloudflare-ipfs.com/ipfs/bafybeib6a55iwy4666wxcwo7vy756sn36cwyx7u2u5idqcjxopwa7wpb3m",
+            url: "https://dweb.link/ipfs/bafybeib6a55iwy4666wxcwo7vy756sn36cwyx7u2u5idqcjxopwa7wpb3m",
             name: "powersOfTau28_hez_final_17.ptau",
             maxConstraints: 1 << 17,
             size: 151078040,
@@ -348,36 +350,54 @@ async function generateProvingKey() {
     const ptauArray = new Uint8Array(await res.arrayBuffer())
 
     let zKeyLog: string[] = []
-    const zKeyResult = await zKey.newZKey(
-        r1csFile,
-        ptauArray,
-        { type: "mem" },
-        {
-            info(str: string) {
-                zKeyLog.push(str)
-                console.log("INFO", str)
-            },
-            warn(str: string) {
-                console.log("WARN", str)
-            },
-            debug(str: string) {
-                // console.log("DEBUG", str)
-            },
-            error(str: string) {
-                console.log("ERROR", str)
-            },
-        }
+    const zkFile0 = { type: "mem", data: null }
+    const circuitHash = await zKey.newZKey(r1csFile, ptauArray, zkFile0, {
+        info(str: string) {
+            zKeyLog.push(str)
+            console.log("INFO", str)
+        },
+        warn(str: string) {
+            console.log("WARN", str)
+        },
+        debug(str: string) {
+            // console.log("DEBUG", str)
+        },
+        error(str: string) {
+            console.log("ERROR", str)
+        },
+    })
+
+    const zkFile = { type: "mem", data: null }
+    const entropy = globalThis.crypto.getRandomValues(new Uint8Array(512))
+    const contributedZKey = await zKey.contribute(
+        zkFile0.data,
+        zkFile,
+        "zkrepl",
+        entropy
     )
-    console.log("ZKEY", zKeyResult)
-    // console.log(arr, newZKey)
-    // postMessage({
-    //     type: "log",
-    //     text: zKeyLog.join("\n"),
-    // })
+    console.log("ZKEY", circuitHash, zkFile, contributedZKey)
+
+    const vkeyResult = JSON.stringify(
+        await zKey.exportVerificationKey(zkFile.data),
+        null,
+        "  "
+    )
+
+    const solidityProver = await zKey.exportSolidityVerifier(zkFile.data, {
+        groth16: groth16SolidityVerifierTemplate,
+    })
+
     postMessage({
         type: "keys",
+        // text:
+        //     "Circuit Hash: " +
+        //     Array.from(circuitHash)
+        //         .map((k: any) => k.toString(16))
+        //         .join(""),
         files: {
-            "main.zkey": zKeyResult,
+            "main.zkey": zkFile.data,
+            "main.vkey.json": vkeyResult,
+            "main.sol": solidityProver,
         },
     })
 }

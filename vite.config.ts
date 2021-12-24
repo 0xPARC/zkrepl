@@ -6,6 +6,7 @@ export default defineConfig({
             "@wasmer/wasi/lib/polyfills/buffer": "./src/worker/buffer.ts",
             "web-worker": "./src/worker/buffer.ts",
             readline: "./src/worker/buffer.ts",
+            crypto: "./src/worker/crypto.ts",
             // fs: "./src/worker/filesystem.ts",
         },
     },

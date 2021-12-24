@@ -358,6 +358,7 @@ export default function App() {
                     ))}
                     {messages.some((k) => k.type === "done") &&
                         !messages.some((k) => k.type === "keys") &&
+                        !running &&
                         workerRef.current && (
                             <div className="phase2">
                                 <button

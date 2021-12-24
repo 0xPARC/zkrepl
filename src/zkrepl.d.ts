@@ -10,6 +10,19 @@ declare module "snarkjs" {
             zkeyName: any,
             logger?: any
         ): Promise<any>
+        exportVerificationKey(zkeyName: any): Promise<any>
+        exportJson(zkeyName: any): Promise<any>
+        exportSolidityVerifier(
+            zkeyName: any,
+            templates: any,
+            logger?: any
+        ): Promise<any>
+        contribute(
+            zKeyName: any,
+            newzKeyName: any,
+            name: string,
+            entropy: any
+        ): Promise<any>
     }
 }
 
