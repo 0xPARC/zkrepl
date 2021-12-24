@@ -2,6 +2,17 @@ declare module "circom2/vendor/wasi" {
     export * from "@wasmer/wasi"
 }
 
+declare module "snarkjs" {
+    export const zKey: {
+        newZKey(
+            r1csName: any,
+            ptauName: any,
+            zkeyName: any,
+            logger?: any
+        ): Promise<any>
+    }
+}
+
 declare module "buffer-es6" {
     export * from "buffer"
 }

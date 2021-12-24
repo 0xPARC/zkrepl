@@ -6,7 +6,8 @@
   "scripts": {
     "dev": "vite --port 4000",
     "build": "vite build",
-    "deploy": "echo 'zkrepl.dev' > dist/CNAME && gh-pages -d dist"
+    "deploy": "echo 'zkrepl.dev' > dist/CNAME && gh-pages -d dist",
+    "postinstall": "patch-package"
   },
   "repository": {
     "type": "git",
@@ -24,11 +25,13 @@
     "@wasmer/wasi": "^0.12.0",
     "@wasmer/wasmfs": "^0.12.0",
     "ansi-to-react": "^6.1.6",
+    "blake2b-wasm": "^2.4.0",
     "buffer": "^6.0.3",
     "buffer-es6": "^4.9.3",
     "circom2": "^0.0.6",
-    "ffjavascript": "^0.2.46",
+    "ffjavascript": "0.2.39",
     "monaco-editor": "^0.30.1",
+    "patch-package": "^6.4.7",
     "path-browserify": "^1.0.1",
     "r1csfile": "^0.0.33",
     "react": "^18.0.0-beta-12bffc78d-20211206",

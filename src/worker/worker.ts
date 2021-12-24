@@ -4,6 +4,11 @@ import { runCircom, wasmFsPromise } from "./wasi"
 import * as binFileUtils from "@iden3/binfileutils"
 import { readR1csHeader } from "r1csfile"
 import { Scalar } from "ffjavascript"
+// import { buildThreadManager } from "ffjavascript/src/threadman"
+
+// console.log(buildThreadManager)
+// import { newZKey } from "snarkjs"
+import { zKey } from "snarkjs"
 
 let wtnsFile: Uint8Array
 
@@ -143,8 +148,9 @@ async function bootWasm(code: string) {
         type: "Artifacts",
         text: "",
         files: {
-            "main.wtns": wtnsFile,
             "main.wasm": binary.buffer,
+            "main.js": wasmFs.fs.readFileSync("main_js/witness_calculator.js"),
+            "main.wtns": wtnsFile,
             "main.r1cs": r1csFile,
             "main.sym": wasmFs.fs.readFileSync("main.sym"),
         },
@@ -234,7 +240,146 @@ onmessage = (e: MessageEvent) => {
             console.log("hover err", err)
             postMessage({ type: "hover", text: "" })
         })
+    } else if (data.type === "phase2") {
+        generateProvingKey().catch((err) => {
+            postMessage({ type: "fail", text: err.message })
+        })
     }
+}
+
+async function generateProvingKey() {
+    const wasmFs = await wasmFsPromise
+    const r1csFile = wasmFs.fs.readFileSync("main.r1cs")
+    const { fd: fdR1cs, sections: sectionsR1cs } =
+        await binFileUtils.readBinFile(r1csFile, "r1cs", 1, 1 << 22, 1 << 24)
+    const r1cs = await readR1csHeader(
+        fdR1cs,
+        sectionsR1cs,
+        /* singleThread */ true
+    )
+    await fdR1cs.close()
+
+    const pots = [
+        // {
+        //     url: "https://dweb.link/ipfs/bafybeierwc3pmc2id2zfpgb42njkzvvvj4s333dcq4gr5ri2ixa6vuxi6a",
+        //     name: "powersOfTau28_hez_final_11.ptau",
+        //     maxConstraints: 1 << 11,
+        //     size: 2442392,
+        // },
+        // {
+        //     url: "https://cloudflare-ipfs.com/ipfs/bafybeibyoizq4sfp7sfomoofgczak3lgispbvviljjgdpchsxjrb4p6qsi",
+        //     name: "powersOfTau28_hez_final_12.ptau",
+        //     maxConstraints: 1 << 12,
+        //     size: 4801688,
+        // },
+        // {
+        //     url: "https://cloudflare-ipfs.com/ipfs/bafybeiderqjodw2mc6m5fqnc7edsun5eu4niupyw3cdsiruospa66y5vam",
+        //     name: "powersOfTau28_hez_final_13.ptau",
+        //     maxConstraints: 1 << 13,
+        //     size: 9520280,
+        // },
+        {
+            url: "https://cloudflare-ipfs.com/ipfs/bafybeihuh2cuustfaraum3txs2scrl5vaukkc6u5ztf27jlyx5xhtsz5ti",
+            name: "powersOfTau28_hez_final_14.ptau",
+            maxConstraints: 1 << 14,
+            size: 18957464,
+        },
+        {
+            url: "https://dweb.link/ipfs/bafybeihfv3pmjkfmefpwdxwmxxqtsax4ljshnhl3qai4v62q5r2wszix34",
+            name: "powersOfTau28_hez_final_15.ptau",
+            maxConstraints: 1 << 15,
+            size: 37831832,
+        },
+        {
+            url: "https://cloudflare-ipfs.com/ipfs/bafybeiajy6lpqym5fvszu4klbzoqzljwhv4ocxvqmwvlwrg6pd6rieggd4",
+            name: "powersOfTau28_hez_final_16.ptau",
+            maxConstraints: 1 << 16,
+            size: 75580568,
+        },
+        {
+            url: "https://cloudflare-ipfs.com/ipfs/bafybeib6a55iwy4666wxcwo7vy756sn36cwyx7u2u5idqcjxopwa7wpb3m",
+            name: "powersOfTau28_hez_final_17.ptau",
+            maxConstraints: 1 << 17,
+            size: 151078040,
+        },
+        {
+            url: "https://dweb.link/ipfs/bafybeidmnn4gwlirvok6vllpu4b7hkgheyemmptmeqgmhk3ony6aanv77e",
+            name: "powersOfTau28_hez_final_18.ptau",
+            maxConstraints: 1 << 18,
+            size: 302072984,
+        },
+    ]
+
+    const pot = pots.find((p) => p.maxConstraints >= r1cs.nConstraints)
+    if (!pot)
+        throw new Error(
+            "No powers of tau supported for " +
+                r1cs.nConstraints +
+                " constraints"
+        )
+    console.log(r1cs.nConstraints, pot)
+    postMessage({
+        type: "progress",
+        fraction: null,
+    })
+    const response = await fetch(pot.url)
+    let loaded = 0
+
+    const res = new Response(
+        new ReadableStream({
+            async start(controller) {
+                const reader = response.body!.getReader()
+                for (;;) {
+                    const { done, value } = await reader.read()
+                    if (done) break
+                    loaded += value!.byteLength
+                    // progress({loaded, total})
+                    // console.log(loaded, total)
+                    postMessage({
+                        type: "progress",
+                        fraction: loaded / pot.size,
+                    })
+                    controller.enqueue(value)
+                }
+                controller.close()
+            },
+        })
+    )
+    const ptauArray = new Uint8Array(await res.arrayBuffer())
+
+    let zKeyLog: string[] = []
+    const zKeyResult = await zKey.newZKey(
+        r1csFile,
+        ptauArray,
+        { type: "mem" },
+        {
+            info(str: string) {
+                zKeyLog.push(str)
+                console.log("INFO", str)
+            },
+            warn(str: string) {
+                console.log("WARN", str)
+            },
+            debug(str: string) {
+                // console.log("DEBUG", str)
+            },
+            error(str: string) {
+                console.log("ERROR", str)
+            },
+        }
+    )
+    console.log("ZKEY", zKeyResult)
+    // console.log(arr, newZKey)
+    // postMessage({
+    //     type: "log",
+    //     text: zKeyLog.join("\n"),
+    // })
+    postMessage({
+        type: "keys",
+        files: {
+            "main.zkey": zKeyResult,
+        },
+    })
 }
 
 export async function readWtnsHeader(

@@ -86,6 +86,7 @@ export default function App() {
     const workerRef = React.useRef<(Worker & { running?: boolean }) | null>(
         null
     )
+    const [progress, setProgress] = React.useState(1)
     const GistID = new URLSearchParams(location.search).get("gist")
 
     React.useEffect(() => {
@@ -156,10 +157,16 @@ export default function App() {
                         } else if (data.type === "done") {
                             setRunning(false)
                             workerRef.current!.running = false
+                        } else if (data.type === "keys") {
+                            setRunning(false)
+                            workerRef.current!.running = false
                         } else if (data.type === "hover") {
                             return replyHover(data)
                         } else if (data.type === "debug") {
                             console.log(data.text)
+                        } else if (data.type === "progress") {
+                            setProgress(data.fraction)
+                            return
                         }
                         setMessages((k) => [...k, data])
                     }
@@ -349,6 +356,28 @@ export default function App() {
                             )}
                         </div>
                     ))}
+                    {messages.some((k) => k.type === "done") &&
+                        !messages.some((k) => k.type === "keys") &&
+                        workerRef.current && (
+                            <div className="phase2">
+                                <button
+                                    onClick={() => {
+                                        workerRef.current!.postMessage({
+                                            type: "phase2",
+                                            // code: editor.getValue(),
+                                        })
+                                        setRunning(Math.random())
+                                    }}
+                                >
+                                    Generate Prove/Verify Keys
+                                </button>
+                            </div>
+                        )}
+                    {progress !== 1 && (
+                        <div className="progress-container">
+                            <progress value={progress} />
+                        </div>
+                    )}
                     {running ? <LoadingIndicator key={running} /> : null}
                 </div>
             </div>
