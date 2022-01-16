@@ -32,6 +32,13 @@ monaco.languages.registerHoverProvider("circom", {
                         ""
                     )})`,
                 })
+            } else if (
+                m[2].startsWith("http://") ||
+                m[2].startsWith("https://")
+            ) {
+                contents.push({
+                    value: `[View Source](${m[2]})`,
+                })
             }
             return {
                 range: new monaco.Range(

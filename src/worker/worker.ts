@@ -1,5 +1,5 @@
 import witnessBuilder from "./witness"
-import { runCircom, wasmFsPromise } from "./wasi"
+import { replaceExternalIncludes, runCircom, wasmFsPromise } from "./wasi"
 import * as binFileUtils from "@iden3/binfileutils"
 import { readR1csHeader } from "r1csfile"
 import { Scalar } from "ffjavascript"
@@ -17,23 +17,7 @@ async function bootWasm(code: string) {
     const wasmFs = await wasmFsPromise
     const startTime = performance.now()
 
-    for (let m of code.matchAll(/include\s+"([^"]+)"/g)) {
-        const fileName = m[1]
-        console.log(fileName)
-        if (fileName.startsWith("gist:") && !wasmFs.fs.existsSync(fileName)) {
-            const gistId = m[1].substr(5)
-            const gist = await fetch(`https://api.github.com/gists/${gistId}`)
-            const gistData = await gist.json()
-            const gistFile = gistData.files["main.circom"].content.replace(
-                /component\s+main[^;]+;/,
-                "/* $1 */"
-            )
-            wasmFs.fs.writeFileSync(fileName, gistFile)
-        }
-    }
-
-    wasmFs.fs.writeFileSync("/dev/stderr", "")
-    wasmFs.fs.writeFileSync("/dev/stdout", "")
+    code = replaceExternalIncludes(code)
     wasmFs.fs.writeFileSync("main.circom", code)
 
     await runCircom()

@@ -83,6 +83,18 @@ async function initFS() {
 
 export const wasmFsPromise = initFS()
 
+export function replaceExternalIncludes(code: string) {
+    return code.replace(/(include\s+")([^"]+)"/g, (all, prefix, fileName) => {
+        if (fileName.startsWith("gist:"))
+            return (
+                prefix +
+                fileName.replace("gist:", "external/https/gist.github.com/") +
+                '"'
+            )
+        return all.replace(/(include\s+")(\w+):\/\//, "$1external/$2/")
+    })
+}
+
 export async function runCircom() {
     const wasmFs = await wasmFsPromise
 
@@ -92,12 +104,24 @@ export async function runCircom() {
     let writeBufferOffset = 0
     let writeBufferPos = 0
 
+    let fetchExternalResource: string | undefined
+
     // This is a really shitty implementation of a write buffer
     // it is pretty garbage and shouldn't have any reason for working
     // but it seems to work well enough to speed up more complex
     // circuits by more than 10x
     const fsBindings = {
         ...wasmFs.fs,
+        realpathSync(path: string) {
+            // console.log("realpathSync>>", path)
+            const clr = path.replace(/.*circomlib\//, "circomlib/")
+            if (path.includes("circomlib/") && wasmFs.fs.existsSync(clr))
+                return clr
+            if (path.startsWith("external/") && !wasmFs.fs.existsSync(path)) {
+                fetchExternalResource = path
+            }
+            return wasmFs.fs.realpathSync(path)
+        },
         writeSync(
             fd: number,
             buf: Uint8Array,
@@ -154,39 +178,141 @@ export async function runCircom() {
             }
         },
     }
-    let wasi = new WASI({
-        // Arguments passed to the Wasm Module
-        // The first argument is usually the filepath to the executable WASI module
-        // we want to run.
-        args: ["circom2", "main.circom", "--r1cs", "--wasm", "--sym"],
-
-        // Environment variables that are accesible to the WASI module
-        env: {
-            RUST_BACKTRACE: "1",
-        },
-
-        preopens: {
-            ".": ".",
-        },
-
-        // Bindings that are used by the WASI Instance (fs, path, etc...)
-        bindings: {
-            ...browserBindings,
-
-            fs: fsBindings,
-        },
-    })
 
     const wasm = await loadWasm(wasmURL)
-    let instance = await WebAssembly.instantiate(wasm, {
-        ...wasi.getImports(wasm),
-    })
-    // console.log("starting")
+    while (true) {
+        let wasi = new WASI({
+            // Arguments passed to the Wasm Module
+            // The first argument is usually the filepath to the executable WASI module
+            // we want to run.
+            args: ["circom2", "main.circom", "--r1cs", "--wasm", "--sym"],
+
+            // Environment variables that are accesible to the WASI module
+            env: {
+                RUST_BACKTRACE: "1",
+            },
+
+            preopens: {
+                ".": ".",
+            },
+
+            // Bindings that are used by the WASI Instance (fs, path, etc...)
+            bindings: {
+                ...browserBindings,
+                // path: {
+                //     ...browserBindings.path,
+                //     resolve(base, file) {
+                //         console.log("resolve", base, file)
+                //         return browserBindings.path.resolve(base, file)
+                //     },
+                // },
+                fs: fsBindings,
+                // fs: new Proxy(fsBindings, {
+                //     get(target, prop, rec) {
+                //         if (
+                //             typeof target[prop] === "function" &&
+                //             prop !== "writeSync"
+                //         ) {
+                //             return (...args) => {
+                //                 console.log(prop, args)
+                //                 return target[prop](...args)
+                //             }
+                //         }
+                //         return target[prop]
+                //     },
+                // }),
+            },
+        })
+        fetchExternalResource = undefined
+
+        wasi.bindings.fs.writeFileSync("/dev/stderr", "")
+        wasi.bindings.fs.writeFileSync("/dev/stdout", "")
+
+        let instance = await WebAssembly.instantiate(wasm, {
+            ...wasi.getImports(wasm),
+        })
+        // console.log("starting")
+        try {
+            wasi.start(instance) // Start the WASI instance
+        } catch (err) {
+            console.log(err)
+        }
+        wasi.bindings.fs.closeSync(-1)
+        if (fetchExternalResource) {
+            console.log("Fetching", fetchExternalResource)
+            const res = await fetchResource(fetchExternalResource)
+            const code = replaceExternalIncludes(removeMainComponent(res))
+
+            wasi.bindings.fs.mkdirSync(path.dirname(fetchExternalResource), {
+                recursive: true,
+            })
+            wasi.bindings.fs.writeFileSync(fetchExternalResource, code)
+            continue
+        }
+
+        break
+    }
+}
+
+function removeMainComponent(code: string) {
+    return code.replace(/(component\s+main[^;]+;)/, "/* $1 */")
+}
+
+async function fetchText(url: string) {
+    let req
     try {
-        wasi.start(instance) // Start the WASI instance
+        req = await fetch(url)
     } catch (err) {
-        console.log(err)
+        throw new Error(`Failed to fetch ${url}`)
+    }
+    if (req.status !== 200) throw new Error(`Error ${req.status}: ${url}`)
+    return await req.text()
+}
+
+async function fetchGist(gistId: string) {
+    const gist = await fetch(`https://api.github.com/gists/${gistId}`)
+    const gistData = await gist.json()
+    if (gistData.files["main.circom"])
+        return gistData.files["main.circom"].content
+
+    const circomFile = Object.keys(gistData.files).find((k) =>
+        k.endsWith(".circom")
+    )
+    if (circomFile) return gistData.files[circomFile!].content
+
+    return Object.values(gistData.files as Record<string, any>)[0].content
+}
+
+async function fetchResource(path: string) {
+    let url
+    let m: RegExpMatchArray = []
+
+    const match = (re: RegExp) => (m = re.exec(path)!)
+    // https://gist.github.com/antimatter15/36a5facb7f629eb9ee93f0e623f5dbb5
+    if (match(/^external\/https\/gist\.github\.com\/([^/]+)\/([\da-f]{32})/)) {
+        return fetchGist(m[2])
     }
 
-    wasi.bindings.fs.closeSync(-1)
+    if (match(/^external\/https\/gist\.github\.com\/([\da-f]{32})/)) {
+        return fetchGist(m[1])
+    }
+
+    // 'external/https/github.com/0xPARC/zk-group-sigs/blob/master/circuits/deny.circom'
+    if (
+        match(
+            /^external\/https\/github\.com\/([^/]+)\/([^/]+)\/blob\/([^/]+)\/(.*)/
+        )
+    ) {
+        // https://raw.githubusercontent.com/0xPARC/zk-group-sigs/master/circuits/deny.circom
+        return fetchText(
+            `https://raw.githubusercontent.com/${m[1]}/${m[2]}/${m[3]}/${m[4]}`
+        )
+    }
+
+    if (match(/^external\/ipfs\/(.*)$/))
+        return fetchText(`https://cloudflare-ipfs.com/ipfs/${m[1]}`)
+    if (match(/^external\/dweb\/ipfs\/(.*)$/))
+        return fetchText(`https://cloudflare-ipfs.com/ipfs/${m[1]}`)
+    if (match(/^external\/https\/(.*)$/)) return fetchText(`https://${m[1]}`)
+    if (match(/^external\/http\/(.*)$/)) return fetchText(`http://${m[1]}`)
 }
