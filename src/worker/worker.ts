@@ -1,4 +1,3 @@
-import wabtLoader from "wabt"
 import witnessBuilder from "./witness"
 import { runCircom, wasmFsPromise } from "./wasi"
 import * as binFileUtils from "@iden3/binfileutils"
@@ -55,16 +54,10 @@ async function bootWasm(code: string) {
 
     // console.log(stdout)
 
-    const wabt = await wabtLoader()
-    const watData = wasmFs.fs.readFileSync("main_js/main.wat")
-
-    const module = wabt.parseWat("main.wat", watData)
-    module.resolveNames()
-    module.validate()
-    var binary = module.toBinary({})
+    const wasmData = wasmFs.fs.readFileSync("main_js/main.wasm") as Buffer
 
     let logs: string[] = []
-    const witness = await witnessBuilder(binary.buffer, {
+    const witness = await witnessBuilder(wasmData, {
         log(message: bigint) {
             logs.push(message.toString())
         },
@@ -150,7 +143,7 @@ async function bootWasm(code: string) {
         type: "Artifacts",
         text: "",
         files: {
-            "main.wasm": binary.buffer,
+            "main.wasm": wasmData,
             "main.js": wasmFs.fs.readFileSync("main_js/witness_calculator.js"),
             "main.wtns": wtnsFile,
             "main.r1cs": r1csFile,

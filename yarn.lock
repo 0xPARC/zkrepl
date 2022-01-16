@@ -216,13 +216,12 @@ ci-info@^2.0.0:
   resolved "https://registry.yarnpkg.com/ci-info/-/ci-info-2.0.0.tgz#67a9e964be31a51e15e5010d58e6f12834002f46"
   integrity sha512-5tK7EtrZ0N+OLFMthtqOj4fI2Jeb88C4CAZPu25LDVUgXJ0A3Js4PMGqrn0JU1W0Mh1/Z8wZzYPxqUrXeBboCQ==
 
-circom2@^0.0.6:
-  version "0.0.6"
-  resolved "https://registry.yarnpkg.com/circom2/-/circom2-0.0.6.tgz#d74fce3d86d57a07c679f63a83380d6122c36a6d"
-  integrity sha512-ALTmm5CMmqeacDr5O2GDV9Ail82pp9bTvv+ZciGbhwMnj5GoSvCUI8enokAmuK5wWinCuUTkcEtGl7Lumakq0A==
+circom2@^0.1.0:
+  version "0.1.0"
+  resolved "https://registry.yarnpkg.com/circom2/-/circom2-0.1.0.tgz#78de306a5f275ff38922498737c2920116e4df32"
+  integrity sha512-snMflWEy0k4nU/qcBG0v9dYLd6Tz9+dIaEGMRyhJc3Dz1iHalRA8RRDLK00zGS2L0nhTtvhy5BqFwTyy5+HIVg==
   dependencies:
     "@wasmer/wasi" "^0.12.0"
-    wabt "^1.0.24"
 
 circom_runtime@0.1.14:
   version "0.1.14"
@@ -1239,11 +1238,6 @@ vite@~2.7.0:
     rollup "^2.59.0"
   optionalDependencies:
     fsevents "~2.3.2"
-
-wabt@^1.0.24:
-  version "1.0.25"
-  resolved "https://registry.yarnpkg.com/wabt/-/wabt-1.0.25.tgz#25d2393e206325fd4faf6f55e4f8779a413e47e9"
-  integrity sha512-xaSiKAbzZliA54zsJUs3leQzgQdTWU8t4sYsmlNuAuEMzP7QQvt4RAO38RRlC6DYmsDVfqFF0ribC0N1Vlcrog==
 
 wasmbuilder@^0.0.11:
   version "0.0.11"

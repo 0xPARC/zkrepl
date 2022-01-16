@@ -158,7 +158,7 @@ export async function runCircom() {
         // Arguments passed to the Wasm Module
         // The first argument is usually the filepath to the executable WASI module
         // we want to run.
-        args: ["circom2", "main.circom", "--r1cs", "--wat", "--sym"],
+        args: ["circom2", "main.circom", "--r1cs", "--wasm", "--sym"],
 
         // Environment variables that are accesible to the WASI module
         env: {
