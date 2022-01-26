@@ -24,6 +24,15 @@ declare module "snarkjs" {
             entropy: any
         ): Promise<any>
     }
+
+    export const plonk: {
+        setup(
+            r1csName: any,
+            ptauName: any,
+            zkeyName: any,
+            logger?: any
+        ): Promise<any>
+    }
 }
 
 declare module "buffer-es6" {

@@ -360,18 +360,32 @@ export default function App() {
                         !messages.some((k) => k.type === "keys") &&
                         !running &&
                         workerRef.current && (
-                            <div className="phase2">
-                                <button
-                                    onClick={() => {
-                                        workerRef.current!.postMessage({
-                                            type: "phase2",
-                                            // code: editor.getValue(),
-                                        })
-                                        setRunning(Math.random())
-                                    }}
-                                >
-                                    Generate Prove/Verify Keys
-                                </button>
+                            <div>
+                                <div className="label">Prove/Verify Keys: </div>
+                                <div className="phase2">
+                                    <button
+                                        onClick={() => {
+                                            workerRef.current!.postMessage({
+                                                type: "groth16",
+                                                // code: editor.getValue(),
+                                            })
+                                            setRunning(Math.random())
+                                        }}
+                                    >
+                                        Groth16
+                                    </button>
+                                    <button
+                                        onClick={() => {
+                                            workerRef.current!.postMessage({
+                                                type: "plonk",
+                                                // code: editor.getValue(),
+                                            })
+                                            setRunning(Math.random())
+                                        }}
+                                    >
+                                        PLONK
+                                    </button>
+                                </div>
                             </div>
                         )}
                     {progress !== 1 && (
