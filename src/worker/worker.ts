@@ -181,17 +181,19 @@ async function handleHover(symbol: string) {
                 2
             )
 
-            const signalIndex = parseInt(line[0])
-            const b = buffWitness.slice(
-                signalIndex * wtns.n8,
-                signalIndex * wtns.n8 + wtns.n8
-            )
-            results.push(
-                "*" +
-                    parts[3].replace("main.", "") +
-                    " =* " +
-                    Scalar.fromRprLE(b).toString()
-            )
+            const signalIndex = parseInt(parts[1])
+            if (signalIndex !== -1) {
+                const b = buffWitness.slice(
+                    signalIndex * wtns.n8,
+                    signalIndex * wtns.n8 + wtns.n8
+                )
+                results.push(
+                    "*" +
+                        parts[3].replace("main.", "") +
+                        " =* " +
+                        Scalar.fromRprLE(b).toString()
+                )
+            }
 
             await fdWtns.close()
 
