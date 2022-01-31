@@ -62,7 +62,7 @@ body {
         height: 30px;
     }
 }
-.output {
+.sidebar {
     flex: 1;
     white-space: pre-wrap;
     word-wrap: break-word;
@@ -86,6 +86,14 @@ body {
         font-size: small;
         padding-left: 20px;
         padding-bottom: 10px;
+    }
+    .file {
+        &:hover {
+            text-decoration: underline;
+        }
+    }
+    .activeFile {
+        text-decoration: underline;
     }
 }
 

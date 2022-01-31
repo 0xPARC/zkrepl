@@ -82,11 +82,13 @@ export default function App() {
     const [messages, setMessages] = React.useState<Message[]>([])
     const [editor, setEditor] =
         React.useState<monaco.editor.IStandaloneCodeEditor | null>(null)
+    const modelsRef = React.useRef<monaco.editor.ITextModel[]>([]);
     const monacoEl = React.useRef(null)
     const workerRef = React.useRef<(Worker & { running?: boolean }) | null>(
         null
     )
     const [progress, setProgress] = React.useState(1)
+    const editorState: Record<string, monaco.editor.ICodeEditorViewState> = {}
     const GistID = new URLSearchParams(location.search).get("gist")
 
     React.useEffect(() => {
@@ -120,18 +122,19 @@ export default function App() {
                 fetch("https://api.github.com/gists/" + GistID)
                     .then((data) => data.json())
                     .then((data) => {
-                        editor
-                            .getModel()!
-                            .setValue(
-                                data?.files?.["main.circom"]?.content ||
-                                    "// Unable to load gist"
-                            )
+                        const tmpModels: monaco.editor.ITextModel[] = []
+                        for (const key in data?.files) {
+                            const model = monaco.editor.createModel(data?.files[key].content || "// Unable to load gist",
+                                "circom", new monaco.Uri().with({path: key}))
+                            tmpModels.push(model)
+                        }
+                        modelsRef.current = tmpModels;
+                        editor.setModel(tmpModels[0]);
                         run()
                     })
             }
 
             const editor = monaco.editor.create(monacoEl.current!, {
-                value: GistID ? "// Loading from Github..." : codeExample,
                 language: "circom",
                 theme: "vs",
 
@@ -140,6 +143,10 @@ export default function App() {
                     enabled: true,
                 },
             })
+
+            const modelsToFiles = (models: monaco.editor.ITextModel[]) => {
+                return models.map(x => {return {value: x.getValue(), name: x.uri.path.slice(1)}})
+            }
 
             const run = () => {
                 if (!workerRef.current || workerRef.current!.running) {
@@ -186,7 +193,7 @@ export default function App() {
                 setMessages([])
                 workerRef.current.postMessage({
                     type: "run",
-                    code: editor.getValue(),
+                    files: modelsToFiles(modelsRef.current),
                 })
             }
 
@@ -198,17 +205,17 @@ export default function App() {
                     location.href =
                         "https://github.com/login/oauth/authorize?client_id=85123c5a3a8a8f73f015&scope=gist"
                 }
-                const code = editor.getValue()
-                if (history.state === code) {
+                if (history.state === JSON.stringify(modelsToFiles(modelsRef.current))) {
                     // do nothing!
                     console.log("Already saved!")
                 } else if (localStorage.GithubAccessToken) {
                     setRunning(Math.random() + 1)
 
-                    const filesObj: Record<string, { content: string }> = {
-                        "main.circom": {
-                            content: code,
-                        },
+                    const filesObj: Record<string, { content: string }> = {}
+                    for (const model of modelsToFiles(modelsRef.current)) {
+                        filesObj[model.name] = {
+                            content: model.value
+                        }
                     }
                     if (GistID) {
                         filesObj["about_zkrepl.md"] = {
@@ -237,7 +244,7 @@ export default function App() {
                         .then((k) => k.json())
                         .then((k) => {
                             if (k.id) {
-                                history.replaceState(code, "", "/?gist=" + k.id)
+                                history.replaceState(JSON.stringify(modelsRef.current), "", "/?gist=" + k.id)
 
                                 setMessages((m) => [
                                     ...m,
@@ -288,8 +295,29 @@ export default function App() {
 
         return () => editor?.dispose()
     }, [monacoEl.current])
+
+    const switchEditor = (file: monaco.editor.ITextModel) => {
+        const saveState = editor?.saveViewState()
+        if (saveState && editor?.getModel()) {
+            editorState[editor?.getModel()!.uri.path] = saveState
+        }
+
+        editor?.setModel(file)
+        if (editorState[file.uri.path]) {
+            editor?.restoreViewState(editorState[file.uri.path])
+        }
+    }
+
     return (
         <div className="layout">
+            <div className="sidebar">
+                <div className="label">FILES:</div>
+                <div className="files">
+                    {modelsRef.current.map((file) => {
+                        return <li className="file" key={file.uri.path} onClick={() => switchEditor(file)}>{file.uri.path.slice(1)}</li>
+                    })}
+                </div>
+            </div>
             <div className="editor" ref={monacoEl}></div>
             <div className="sidebar">
                 <div className="output">

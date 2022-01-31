@@ -14,12 +14,18 @@ import { zKey, plonk } from "snarkjs"
 
 let wtnsFile: Uint8Array
 
-async function bootWasm(code: string) {
+type File = {
+    value: string
+    name: string
+}
+
+async function bootWasm(files: File[]) {
     const wasmFs = await wasmFsPromise
     const startTime = performance.now()
 
-    code = replaceExternalIncludes(code)
-    wasmFs.fs.writeFileSync("main.circom", code)
+    for (var file of files) {
+        wasmFs.fs.writeFileSync(file.name, replaceExternalIncludes(file.value))
+    }
 
     await runCircom()
 
@@ -58,7 +64,8 @@ async function bootWasm(code: string) {
     )
     await fdR1cs.close()
 
-    const input = /\/*\s*INPUT\s*=\s*(\{[\s\S]+\})\s*\*\//.exec(code)
+    const mainCode = files.find(x => x.name === "main.circom")!.value
+    const input = /\/*\s*INPUT\s*=\s*(\{[\s\S]+\})\s*\*\//.exec(mainCode)
     let inputObj: Record<string, string | string[]> = {}
     if (input) {
         inputObj = JSON.parse(input[1])
@@ -214,7 +221,7 @@ onmessage = (e: MessageEvent) => {
     const data = e.data
 
     if (data.type === "run") {
-        bootWasm(data.code).catch((err) => {
+        bootWasm(data.files).catch((err) => {
             postMessage({ type: "fail", text: err.message })
         })
     } else if (data.type === "hover") {
