@@ -95,7 +95,7 @@ export function replaceExternalIncludes(code: string) {
     })
 }
 
-export async function runCircom() {
+export async function runCircom(fileName: string = "main.circom") {
     const wasmFs = await wasmFsPromise
 
     let bufferSize = 10 * 1024 * 1024
@@ -185,7 +185,7 @@ export async function runCircom() {
             // Arguments passed to the Wasm Module
             // The first argument is usually the filepath to the executable WASI module
             // we want to run.
-            args: ["circom2", "main.circom", "--r1cs", "--wasm", "--sym"],
+            args: ["circom2", fileName, "--r1cs", "--wasm", "--sym"],
 
             // Environment variables that are accesible to the WASI module
             env: {

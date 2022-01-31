@@ -130,7 +130,11 @@ export default function App() {
 
             const modelsToFiles = (models: monaco.editor.ITextModel[]) => {
                 return models.map((x) => {
-                    return { value: x.getValue(), name: x.uri.path.slice(1) }
+                    return {
+                        value: x.getValue(),
+                        name: x.uri.path.slice(1),
+                        active: x.isAttachedToEditor(),
+                    }
                 })
             }
 
@@ -180,7 +184,6 @@ export default function App() {
                 workerRef.current.postMessage({
                     type: "run",
                     files: modelsToFiles(modelsRef.current),
-                    activeFile: editor.getModel()!.uri.path.slice(1),
                 })
             }
 

@@ -13,10 +13,12 @@ import plonkSolidityVerifierTemplate from "../data/plonk.sol?raw"
 import { zKey, plonk } from "snarkjs"
 
 let wtnsFile: Uint8Array
+let filePrefix: string
 
 type File = {
     value: string
     name: string
+    active: boolean
 }
 
 async function bootWasm(files: File[]) {
@@ -27,7 +29,15 @@ async function bootWasm(files: File[]) {
         wasmFs.fs.writeFileSync(file.name, replaceExternalIncludes(file.value))
     }
 
-    await runCircom()
+    const fileName =
+        files.find((x) => x.active && x.value.includes("component main"))
+            ?.name ||
+        files.find((x) => x.name === "main.circom")?.name ||
+        files.find((x) => x.value.includes("component main"))?.name ||
+        "main.circom"
+    // const fileName = 'main.circom'
+    filePrefix = fileName.replace(/\..*$/, "")
+    await runCircom(fileName)
 
     const stderr = wasmFs.fs.readFileSync("/dev/stderr", "utf8")
     // console.log(stderr)
@@ -45,7 +55,9 @@ async function bootWasm(files: File[]) {
 
     // console.log(stdout)
 
-    const wasmData = wasmFs.fs.readFileSync("main_js/main.wasm") as Buffer
+    const wasmData = wasmFs.fs.readFileSync(
+        `${filePrefix}_js/${filePrefix}.wasm`
+    ) as Buffer
 
     let logs: string[] = []
     const witness = await witnessBuilder(wasmData, {
@@ -54,7 +66,7 @@ async function bootWasm(files: File[]) {
         },
     })
 
-    const r1csFile = wasmFs.fs.readFileSync("main.r1cs")
+    const r1csFile = wasmFs.fs.readFileSync(`${filePrefix}.r1cs`)
     const { fd: fdR1cs, sections: sectionsR1cs } =
         await binFileUtils.readBinFile(r1csFile, "r1cs", 1, 1 << 22, 1 << 24)
     const r1cs = await readR1csHeader(
@@ -64,7 +76,7 @@ async function bootWasm(files: File[]) {
     )
     await fdR1cs.close()
 
-    const mainCode = files.find(x => x.name === "main.circom")!.value
+    const mainCode = files.find((x) => x.name === fileName)!.value
     const input = /\/*\s*INPUT\s*=\s*(\{[\s\S]+\})\s*\*\//.exec(mainCode)
     let inputObj: Record<string, string | string[]> = {}
     if (input) {
@@ -98,7 +110,9 @@ async function bootWasm(files: File[]) {
             2
         )
 
-        const symFile = wasmFs.fs.readFileSync("main.sym") as Uint8Array
+        const symFile = wasmFs.fs.readFileSync(
+            `${filePrefix}.sym`
+        ) as Uint8Array
         let lastPos = 0
         let dec = new TextDecoder("utf-8")
         let outputPrefixes: Record<number, string> = {}
@@ -135,11 +149,13 @@ async function bootWasm(files: File[]) {
         type: "Artifacts",
         text: "",
         files: {
-            "main.wasm": wasmData,
-            "main.js": wasmFs.fs.readFileSync("main_js/witness_calculator.js"),
-            "main.wtns": wtnsFile,
-            "main.r1cs": r1csFile,
-            "main.sym": wasmFs.fs.readFileSync("main.sym"),
+            [`${filePrefix}.wasm`]: wasmData,
+            [`${filePrefix}.js`]: wasmFs.fs.readFileSync(
+                `${filePrefix}_js/witness_calculator.js`
+            ),
+            [`${filePrefix}.wtns`]: wtnsFile,
+            [`${filePrefix}.r1cs`]: r1csFile,
+            [`${filePrefix}.sym`]: wasmFs.fs.readFileSync(`${filePrefix}.sym`),
         },
     })
 
@@ -162,7 +178,7 @@ async function handleHover(symbol: string) {
     let symbolMatcher = (k: string) => symbolMatcherRe.test(k)
     let results: string[] = []
 
-    const symFile = wasmFs.fs.readFileSync("main.sym") as Uint8Array
+    const symFile = wasmFs.fs.readFileSync(`${filePrefix}.sym`) as Uint8Array
     let lastPos = 0
     let dec = new TextDecoder("utf-8")
 
@@ -242,7 +258,7 @@ onmessage = (e: MessageEvent) => {
 
 async function generatePLONKProvingKey() {
     const wasmFs = await wasmFsPromise
-    const r1csFile = wasmFs.fs.readFileSync("main.r1cs")
+    const r1csFile = wasmFs.fs.readFileSync(`${filePrefix}.r1cs`)
     const { fd: fdR1cs, sections: sectionsR1cs } =
         await binFileUtils.readBinFile(r1csFile, "r1cs", 1, 1 << 22, 1 << 24)
     const r1cs = await readR1csHeader(
@@ -272,9 +288,9 @@ async function generatePLONKProvingKey() {
     postMessage({
         type: "keys",
         files: {
-            "main.plonk.zkey": zkFile.data,
-            "main.plonk.vkey.json": vkeyResult,
-            "main.plonk.sol": solidityProver,
+            [filePrefix + ".plonk.zkey"]: zkFile.data,
+            [filePrefix + ".plonk.vkey.json"]: vkeyResult,
+            [filePrefix + ".plonk.sol"]: solidityProver,
         },
     })
 }
@@ -301,7 +317,7 @@ function createLogger() {
 
 async function generateGroth16ProvingKey() {
     const wasmFs = await wasmFsPromise
-    const r1csFile = wasmFs.fs.readFileSync("main.r1cs")
+    const r1csFile = wasmFs.fs.readFileSync(filePrefix + ".r1cs")
     const { fd: fdR1cs, sections: sectionsR1cs } =
         await binFileUtils.readBinFile(r1csFile, "r1cs", 1, 1 << 22, 1 << 24)
     const r1cs = await readR1csHeader(
@@ -340,9 +356,9 @@ async function generateGroth16ProvingKey() {
     postMessage({
         type: "keys",
         files: {
-            "main.groth16.zkey": zkFile.data,
-            "main.groth16.vkey.json": vkeyResult,
-            "main.groth16.sol": solidityProver,
+            [filePrefix + ".groth16.zkey"]: zkFile.data,
+            [filePrefix + ".groth16.vkey.json"]: vkeyResult,
+            [filePrefix + ".groth16.sol"]: solidityProver,
         },
     })
 }
