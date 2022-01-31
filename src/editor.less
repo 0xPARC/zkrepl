@@ -180,3 +180,57 @@ button {
         width: 100%;
     }
 }
+
+.tabs {
+    padding-top: 5px;
+    margin-bottom: -1px;
+    position: relative;
+    z-index: 2;
+    white-space: nowrap;
+    overflow: scroll;
+    flex-shrink: 0;
+
+    .tab {
+        display: inline-block;
+        border: 1px solid #ccc;
+        padding: 10px 20px;
+        padding-right: 10px;
+        margin: 0 5px;
+
+        .x {
+            color: #ccc;
+            display: inline-block;
+            margin-left: 10px;
+            cursor: pointer;
+        }
+
+        input {
+            color: #888;
+            padding: 0;
+            font-size: inherit;
+            font-family: inherit;
+            outline: none;
+            border: 0;
+            width: 50px;
+        }
+
+        &.active {
+            border-bottom-color: #fff;
+        }
+    }
+
+    .add {
+        display: inline-block;
+        padding: 10px;
+        cursor: pointer;
+        color: #888;
+    }
+}
+
+.main {
+    background: white;
+}
+
+.editor {
+    border-top: 1px solid #ddd;
+}

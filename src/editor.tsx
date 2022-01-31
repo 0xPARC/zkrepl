@@ -82,7 +82,7 @@ export default function App() {
     const [messages, setMessages] = React.useState<Message[]>([])
     const [editor, setEditor] =
         React.useState<monaco.editor.IStandaloneCodeEditor | null>(null)
-    const modelsRef = React.useRef<monaco.editor.ITextModel[]>([]);
+    const modelsRef = React.useRef<monaco.editor.ITextModel[]>([])
     const monacoEl = React.useRef(null)
     const workerRef = React.useRef<(Worker & { running?: boolean }) | null>(
         null
@@ -118,22 +118,6 @@ export default function App() {
                     })
             }
 
-            if (GistID) {
-                fetch("https://api.github.com/gists/" + GistID)
-                    .then((data) => data.json())
-                    .then((data) => {
-                        const tmpModels: monaco.editor.ITextModel[] = []
-                        for (const key in data?.files) {
-                            const model = monaco.editor.createModel(data?.files[key].content || "// Unable to load gist",
-                                "circom", new monaco.Uri().with({path: key}))
-                            tmpModels.push(model)
-                        }
-                        modelsRef.current = tmpModels;
-                        editor.setModel(tmpModels[0]);
-                        run()
-                    })
-            }
-
             const editor = monaco.editor.create(monacoEl.current!, {
                 language: "circom",
                 theme: "vs",
@@ -145,7 +129,9 @@ export default function App() {
             })
 
             const modelsToFiles = (models: monaco.editor.ITextModel[]) => {
-                return models.map(x => {return {value: x.getValue(), name: x.uri.path.slice(1)}})
+                return models.map((x) => {
+                    return { value: x.getValue(), name: x.uri.path.slice(1) }
+                })
             }
 
             const run = () => {
@@ -194,6 +180,7 @@ export default function App() {
                 workerRef.current.postMessage({
                     type: "run",
                     files: modelsToFiles(modelsRef.current),
+                    activeFile: editor.getModel()!.uri.path.slice(1),
                 })
             }
 
@@ -205,7 +192,10 @@ export default function App() {
                     location.href =
                         "https://github.com/login/oauth/authorize?client_id=85123c5a3a8a8f73f015&scope=gist"
                 }
-                if (history.state === JSON.stringify(modelsToFiles(modelsRef.current))) {
+                if (
+                    history.state ===
+                    JSON.stringify(modelsToFiles(modelsRef.current))
+                ) {
                     // do nothing!
                     console.log("Already saved!")
                 } else if (localStorage.GithubAccessToken) {
@@ -214,7 +204,7 @@ export default function App() {
                     const filesObj: Record<string, { content: string }> = {}
                     for (const model of modelsToFiles(modelsRef.current)) {
                         filesObj[model.name] = {
-                            content: model.value
+                            content: model.value,
                         }
                     }
                     if (GistID) {
@@ -244,7 +234,11 @@ export default function App() {
                         .then((k) => k.json())
                         .then((k) => {
                             if (k.id) {
-                                history.replaceState(JSON.stringify(modelsRef.current), "", "/?gist=" + k.id)
+                                history.replaceState(
+                                    JSON.stringify(modelsRef.current),
+                                    "",
+                                    "/?gist=" + k.id
+                                )
 
                                 setMessages((m) => [
                                     ...m,
@@ -289,7 +283,42 @@ export default function App() {
                     }
                 }
             )
-            if (!GistID) run()
+
+            if (GistID) {
+                fetch("https://api.github.com/gists/" + GistID)
+                    .then((data) => data.json())
+                    .then((data) => {
+                        const tmpModels: monaco.editor.ITextModel[] = []
+                        for (const key in data?.files) {
+                            const model = monaco.editor.createModel(
+                                data?.files[key].content ||
+                                    "// Unable to load gist",
+                                "circom",
+                                new monaco.Uri().with({ path: key })
+                            )
+                            tmpModels.push(model)
+                        }
+                        modelsRef.current = tmpModels
+                        editor.setModel(tmpModels[0])
+                        run()
+                    })
+            } else {
+                const tmpModels: monaco.editor.ITextModel[] = []
+                const files: Record<string, string> = {
+                    "main.circom": codeExample,
+                }
+                for (const key in files) {
+                    const model = monaco.editor.createModel(
+                        files[key],
+                        "circom",
+                        new monaco.Uri().with({ path: key })
+                    )
+                    tmpModels.push(model)
+                }
+                modelsRef.current = tmpModels
+                editor.setModel(tmpModels[0])
+                run()
+            }
             setEditor(editor)
         }
 
@@ -306,19 +335,114 @@ export default function App() {
         if (editorState[file.uri.path]) {
             editor?.restoreViewState(editorState[file.uri.path])
         }
+        setMessages((k) => k.slice(0))
     }
 
     return (
         <div className="layout">
-            <div className="sidebar">
-                <div className="label">FILES:</div>
-                <div className="files">
-                    {modelsRef.current.map((file) => {
-                        return <li className="file" key={file.uri.path} onClick={() => switchEditor(file)}>{file.uri.path.slice(1)}</li>
+            <div className="main">
+                <div className="tabs">
+                    {modelsRef.current.map((file, modelIndex) => {
+                        return (
+                            <div
+                                className={
+                                    "tab " +
+                                    (editor?.getModel()!.uri.path ===
+                                    file.uri.path
+                                        ? "active"
+                                        : "")
+                                }
+                                onClick={(e) => switchEditor(file)}
+                                key={modelIndex}
+                            >
+                                <input
+                                    value={file.uri.path.slice(1)}
+                                    spellCheck={false}
+                                    onChange={(e) => {
+                                        const model = monaco.editor.createModel(
+                                            file.getValue(),
+                                            "circom",
+                                            new monaco.Uri().with({
+                                                path: e.target.value,
+                                            })
+                                        )
+                                        file.dispose()
+                                        modelsRef.current.splice(
+                                            modelIndex,
+                                            1,
+                                            model
+                                        )
+                                        editor?.setModel(model)
+                                        e.target.style.width = "0px"
+                                        e.target.style.width =
+                                            e.target.scrollWidth + 2 + "px"
+
+                                        setMessages((k) => k.slice(0))
+                                    }}
+                                    ref={(e) => {
+                                        if (e) {
+                                            e.style.width = "0px"
+                                            e.style.width =
+                                                e.scrollWidth + 2 + "px"
+                                        }
+                                    }}
+                                />
+
+                                <div
+                                    className="x"
+                                    onClick={(e) => {
+                                        if (
+                                            modelsRef.current.length > 1 &&
+                                            confirm(
+                                                `Are you sure you want to remove "${file.uri.path.slice(
+                                                    1
+                                                )}"?`
+                                            )
+                                        ) {
+                                            file.dispose()
+                                            modelsRef.current.splice(
+                                                modelIndex,
+                                                1
+                                            )
+                                            editor?.setModel(
+                                                modelsRef.current[0]
+                                            )
+                                            setMessages((k) => k.slice(0))
+                                            e.stopPropagation()
+                                        }
+                                    }}
+                                >
+                                    <div>×</div>
+                                </div>
+                            </div>
+                        )
                     })}
+                    {modelsRef.current.every(
+                        (k) => k.uri.path !== "/untitled.circom"
+                    ) && (
+                        <div
+                            className="add"
+                            onClick={() => {
+                                const model = monaco.editor.createModel(
+                                    "// Type your code here",
+                                    "circom",
+                                    new monaco.Uri().with({
+                                        path: "untitled.circom",
+                                    })
+                                )
+                                modelsRef.current.push(model)
+                                editor!.setModel(model)
+                                // trigger a re-render of this react component
+                                setMessages(messages.slice(0))
+                            }}
+                        >
+                            + Add File
+                        </div>
+                    )}
                 </div>
+
+                <div className="editor" ref={monacoEl}></div>
             </div>
-            <div className="editor" ref={monacoEl}></div>
             <div className="sidebar">
                 <div className="output">
                     <div className="heading">
