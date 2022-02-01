@@ -240,7 +240,9 @@ export default function App() {
                         .then((k) => {
                             if (k.id) {
                                 history.replaceState(
-                                    JSON.stringify(modelsRef.current),
+                                    JSON.stringify(
+                                        modelsToFiles(modelsRef.current)
+                                    ),
                                     "",
                                     "/?gist=" + k.id
                                 )
@@ -295,6 +297,7 @@ export default function App() {
                     .then((data) => {
                         const tmpModels: monaco.editor.ITextModel[] = []
                         for (const key in data?.files) {
+                            if (key === "about_zkrepl.md") continue
                             const model = monaco.editor.createModel(
                                 data?.files[key].content ||
                                     "// Unable to load gist",
