@@ -88,7 +88,9 @@ export default function App() {
         null
     )
     const [progress, setProgress] = React.useState(1)
-    const editorState = React.useRef<Record<string, monaco.editor.ICodeEditorViewState>>({})
+    const editorState = React.useRef<
+        Record<string, monaco.editor.ICodeEditorViewState>
+    >({})
     const GistID = new URLSearchParams(location.search).get("gist")
 
     React.useEffect(() => {
@@ -353,7 +355,7 @@ export default function App() {
                                     (editor?.getModel()!.uri.path ===
                                     file.uri.path
                                         ? "active"
-                                        : "")
+                                        : "inactive")
                                 }
                                 onClick={(e) => switchEditor(file)}
                                 key={modelIndex}
@@ -362,20 +364,30 @@ export default function App() {
                                     value={file.uri.path.slice(1)}
                                     spellCheck={false}
                                     onChange={(e) => {
-                                        const model = monaco.editor.createModel(
-                                            file.getValue(),
-                                            "circom",
-                                            new monaco.Uri().with({
-                                                path: e.target.value,
-                                            })
-                                        )
-                                        file.dispose()
-                                        modelsRef.current.splice(
-                                            modelIndex,
-                                            1,
-                                            model
-                                        )
-                                        editor?.setModel(model)
+                                        const fileName = e.target.value
+                                        const fileExists =
+                                            modelsRef.current.some(
+                                                (k) =>
+                                                    k.uri.path ===
+                                                    "/" + fileName
+                                            )
+                                        if (!fileExists) {
+                                            const model =
+                                                monaco.editor.createModel(
+                                                    file.getValue(),
+                                                    "circom",
+                                                    new monaco.Uri().with({
+                                                        path: fileName,
+                                                    })
+                                                )
+                                            file.dispose()
+                                            modelsRef.current.splice(
+                                                modelIndex,
+                                                1,
+                                                model
+                                            )
+                                            editor?.setModel(model)
+                                        }
                                         e.target.style.width = "0px"
                                         e.target.style.width =
                                             e.target.scrollWidth + 2 + "px"
@@ -394,8 +406,11 @@ export default function App() {
                                 <div
                                     className="x"
                                     onClick={(e) => {
+                                        if (modelsRef.current.length == 1)
+                                            return
                                         if (
-                                            modelsRef.current.length > 1 &&
+                                            (file?.getValue()?.length || 0) <
+                                                30 ||
                                             confirm(
                                                 `Are you sure you want to remove "${file.uri.path.slice(
                                                     1
@@ -420,28 +435,35 @@ export default function App() {
                             </div>
                         )
                     })}
-                    {modelsRef.current.every(
-                        (k) => k.uri.path !== "/untitled.circom"
-                    ) && (
-                        <div
-                            className="add"
-                            onClick={() => {
-                                const model = monaco.editor.createModel(
-                                    "// Type your code here",
-                                    "circom",
-                                    new monaco.Uri().with({
-                                        path: "untitled.circom",
-                                    })
-                                )
-                                modelsRef.current.push(model)
-                                editor!.setModel(model)
-                                // trigger a re-render of this react component
-                                setMessages(messages.slice(0))
-                            }}
-                        >
-                            + Add File
-                        </div>
-                    )}
+
+                    <div
+                        className="add"
+                        onClick={() => {
+                            let fileName = "untitled.circom"
+                            for (
+                                let i = 2;
+                                modelsRef.current.some(
+                                    (k) => k.uri.path == "/" + fileName
+                                );
+                                i++
+                            ) {
+                                fileName = `untitled${i}.circom`
+                            }
+                            const model = monaco.editor.createModel(
+                                "// Type your code here",
+                                "circom",
+                                new monaco.Uri().with({
+                                    path: fileName,
+                                })
+                            )
+                            modelsRef.current.push(model)
+                            editor!.setModel(model)
+                            // trigger a re-render of this react component
+                            setMessages(messages.slice(0))
+                        }}
+                    >
+                        + Add File
+                    </div>
                 </div>
 
                 <div className="editor" ref={monacoEl}></div>

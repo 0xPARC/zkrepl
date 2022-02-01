@@ -19,9 +19,16 @@ a {
     box-sizing: border-box;
 }
 
-.editor {
+.main {
     width: 70vw;
     height: 100vh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.editor {
+    flex: 1;
 }
 
 code {
@@ -186,8 +193,6 @@ button {
     margin-bottom: -1px;
     position: relative;
     z-index: 2;
-    white-space: nowrap;
-    overflow: scroll;
     flex-shrink: 0;
 
     .tab {
@@ -206,6 +211,7 @@ button {
 
         input {
             color: #888;
+            background: transparent;
             padding: 0;
             font-size: inherit;
             font-family: inherit;
@@ -216,6 +222,7 @@ button {
 
         &.active {
             border-bottom-color: #fff;
+            background: white;
         }
     }
 
@@ -228,7 +235,7 @@ button {
 }
 
 .main {
-    background: white;
+    background: #efefef;
 }
 
 .editor {
