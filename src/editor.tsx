@@ -88,7 +88,7 @@ export default function App() {
         null
     )
     const [progress, setProgress] = React.useState(1)
-    const editorState: Record<string, monaco.editor.ICodeEditorViewState> = {}
+    const editorState = React.useRef<Record<string, monaco.editor.ICodeEditorViewState>>({})
     const GistID = new URLSearchParams(location.search).get("gist")
 
     React.useEffect(() => {
@@ -331,12 +331,12 @@ export default function App() {
     const switchEditor = (file: monaco.editor.ITextModel) => {
         const saveState = editor?.saveViewState()
         if (saveState && editor?.getModel()) {
-            editorState[editor?.getModel()!.uri.path] = saveState
+            editorState.current[editor?.getModel()!.uri.path] = saveState
         }
 
         editor?.setModel(file)
-        if (editorState[file.uri.path]) {
-            editor?.restoreViewState(editorState[file.uri.path])
+        if (editorState.current[file.uri.path]) {
+            editor?.restoreViewState(editorState.current[file.uri.path])
         }
         setMessages((k) => k.slice(0))
     }
