@@ -37,7 +37,16 @@ async function bootWasm(files: File[]) {
         "main.circom"
     // const fileName = 'main.circom'
     filePrefix = fileName.replace(/\..*$/, "")
-    await runCircom(fileName)
+    const mainCode = files.find((x) => x.name === fileName)!.value
+    const zkreplFlags = /\/\/\s*zkrepl:\s*(.*)/i.exec(mainCode)
+    const flags = zkreplFlags ? zkreplFlags[1].split(/[\s,]+/) : []
+    const opts = {
+        nowasm: flags.includes("nowasm"),
+        nor1cs: flags.includes("nor1cs"),
+        nosym: flags.includes("nosym"),
+        nowtns: flags.includes("nowtns"),
+    }
+    await runCircom(fileName, opts)
 
     const stderr = wasmFs.fs.readFileSync("/dev/stderr", "utf8")
     // console.log(stderr)
@@ -53,47 +62,60 @@ async function bootWasm(files: File[]) {
             )}s`,
     })
 
-    // console.log(stdout)
-
-    const wasmData = wasmFs.fs.readFileSync(
-        `${filePrefix}_js/${filePrefix}.wasm`
-    ) as Buffer
-
+    let witness
     let logs: string[] = []
-    const witness = await witnessBuilder(wasmData, {
-        log(message: bigint) {
-            logs.push(message.toString())
-        },
-    })
+    let wasmData
+    let r1csFile
 
-    const r1csFile = wasmFs.fs.readFileSync(`${filePrefix}.r1cs`)
-    const { fd: fdR1cs, sections: sectionsR1cs } =
-        await binFileUtils.readBinFile(r1csFile, "r1cs", 1, 1 << 22, 1 << 24)
-    const r1cs = await readR1csHeader(
-        fdR1cs,
-        sectionsR1cs,
-        /* singleThread */ true
-    )
-    await fdR1cs.close()
+    if (!opts.nowasm) {
+        wasmData = wasmFs.fs.readFileSync(
+            `${filePrefix}_js/${filePrefix}.wasm`
+        ) as Buffer
 
-    const mainCode = files.find((x) => x.name === fileName)!.value
+        if (!opts.nowtns) {
+            witness = await witnessBuilder(wasmData, {
+                log(message: bigint) {
+                    logs.push(message.toString())
+                },
+            })
+        }
+    }
+    let r1cs
+    if (!opts.nor1cs) {
+        r1csFile = wasmFs.fs.readFileSync(`${filePrefix}.r1cs`)
+        const { fd: fdR1cs, sections: sectionsR1cs } =
+            await binFileUtils.readBinFile(
+                r1csFile,
+                "r1cs",
+                1,
+                1 << 22,
+                1 << 24
+            )
+        r1cs = await readR1csHeader(
+            fdR1cs,
+            sectionsR1cs,
+            /* singleThread */ true
+        )
+        await fdR1cs.close()
+    }
+
     const input = /\/*\s*INPUT\s*=\s*(\{[\s\S]+\})\s*\*\//.exec(mainCode)
     let inputObj: Record<string, string | string[]> = {}
     if (input) {
         inputObj = JSON.parse(input[1])
-    } else if (r1cs.nPrvInputs + r1cs.nPubInputs > 0) {
+    } else if (r1cs && r1cs.nPrvInputs + r1cs.nPubInputs > 0) {
         postMessage({
             type: "stderr",
             text: `To specify inputs, add to your circuit: \n\nINPUT = { "a": "1234" }`,
         })
     }
 
-    wtnsFile = await witness.calculateWTNSBin(inputObj, true)
+    if (witness) wtnsFile = await witness.calculateWTNSBin(inputObj, true)
 
     if (logs.length > 0) postMessage({ type: "log", text: logs.join("\n") })
     // console.log(witness)
 
-    if (r1cs.nOutputs > 0) {
+    if (r1cs && r1cs.nOutputs > 0) {
         const { fd: fdWtns, sections: sectionsWtns } =
             await binFileUtils.readBinFile(
                 wtnsFile,
@@ -110,26 +132,27 @@ async function bootWasm(files: File[]) {
             2
         )
 
-        const symFile = wasmFs.fs.readFileSync(
-            `${filePrefix}.sym`
-        ) as Uint8Array
-        let lastPos = 0
-        let dec = new TextDecoder("utf-8")
         let outputPrefixes: Record<number, string> = {}
-        for (let i = 0; i < symFile.length; i++) {
-            if (symFile[i] === 0x0a) {
-                let line = dec.decode(symFile.slice(lastPos, i))
-                let wireNo = +line.split(",")[0]
+        if (!opts.nosym) {
+            const symFile = wasmFs.fs.readFileSync(
+                `${filePrefix}.sym`
+            ) as Uint8Array
+            let lastPos = 0
+            let dec = new TextDecoder("utf-8")
+            for (let i = 0; i < symFile.length; i++) {
+                if (symFile[i] === 0x0a) {
+                    let line = dec.decode(symFile.slice(lastPos, i))
+                    let wireNo = +line.split(",")[0]
 
-                if (wireNo <= r1cs.nOutputs) {
-                    outputPrefixes[wireNo] =
-                        line.split(",")[3].replace("main.", "") + " = "
+                    if (wireNo <= r1cs.nOutputs) {
+                        outputPrefixes[wireNo] =
+                            line.split(",")[3].replace("main.", "") + " = "
+                    }
+
+                    lastPos = i
                 }
-
-                lastPos = i
             }
         }
-
         let outputSignals = []
         for (let i = 1; i <= r1cs.nOutputs; i++) {
             const b = buffWitness.slice(i * wtns.n8, i * wtns.n8 + wtns.n8)
@@ -143,20 +166,27 @@ async function bootWasm(files: File[]) {
 
         await fdWtns.close()
     }
+
     // console.log(r1cs)
 
     postMessage({
         type: "Artifacts",
         text: "",
-        files: {
-            [`${filePrefix}.wasm`]: wasmData,
-            [`${filePrefix}.js`]: wasmFs.fs.readFileSync(
-                `${filePrefix}_js/witness_calculator.js`
-            ),
-            [`${filePrefix}.wtns`]: wtnsFile,
-            [`${filePrefix}.r1cs`]: r1csFile,
-            [`${filePrefix}.sym`]: wasmFs.fs.readFileSync(`${filePrefix}.sym`),
-        },
+        files: Object.fromEntries(
+            Object.entries({
+                [`${filePrefix}.wasm`]: wasmData,
+                [`${filePrefix}.js`]:
+                    wasmData &&
+                    wasmFs.fs.readFileSync(
+                        `${filePrefix}_js/witness_calculator.js`
+                    ),
+                [`${filePrefix}.wtns`]:
+                    !opts.nowtns && !opts.nowasm && wtnsFile,
+                [`${filePrefix}.r1cs`]: r1csFile,
+                [`${filePrefix}.sym`]:
+                    !opts.nosym && wasmFs.fs.readFileSync(`${filePrefix}.sym`),
+            }).filter(([key, val]) => val)
+        ),
     })
 
     const elapsed = performance.now() - startTime
