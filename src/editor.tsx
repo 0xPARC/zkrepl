@@ -108,11 +108,11 @@ export default function App() {
                         if (k.get("access_token")) {
                             localStorage.GithubAccessToken =
                                 k.get("access_token")
-                            editor
-                                .getModel()!
-                                .setValue(
+                            load(
+                                JSON.parse(
                                     localStorage.GithubNavigationCodeSnapshot
                                 )
+                            )
                             save()
                         } else {
                             alert("Failed to get access token")
@@ -189,11 +189,26 @@ export default function App() {
                 })
             }
 
+            const load = (data: any) => {
+                const tmpModels: monaco.editor.ITextModel[] = []
+                for (const key in data?.files) {
+                    if (key === "about_zkrepl.md") continue
+                    const model = monaco.editor.createModel(
+                        data?.files[key].content || "// Unable to load gist",
+                        "circom",
+                        new monaco.Uri().with({ path: key })
+                    )
+                    tmpModels.push(model)
+                }
+                modelsRef.current = tmpModels
+                editor.setModel(tmpModels[0])
+            }
             const save = () => {
                 const GistID = new URLSearchParams(location.search).get("gist")
                 const logIn = () => {
-                    localStorage.GithubNavigationCodeSnapshot =
-                        editor.getValue()
+                    localStorage.GithubNavigationCodeSnapshot = JSON.stringify(
+                        modelsToFiles(modelsRef.current)
+                    )
                     location.href =
                         "https://github.com/login/oauth/authorize?client_id=85123c5a3a8a8f73f015&scope=gist"
                 }
@@ -206,37 +221,48 @@ export default function App() {
                 } else if (localStorage.GithubAccessToken) {
                     setRunning(Math.random() + 1)
 
-                    const filesObj: Record<string, { content: string }> = {}
-                    for (const model of modelsToFiles(modelsRef.current)) {
-                        filesObj[model.name] = {
-                            content: model.value,
+                    const saveFile = async (id: null | string) => {
+                        const filesObj: Record<string, { content: string }> = {}
+                        for (const model of modelsToFiles(modelsRef.current)) {
+                            filesObj[model.name] = {
+                                content: model.value,
+                            }
                         }
+                        if (id) {
+                            filesObj["about_zkrepl.md"] = {
+                                content:
+                                    `Open this in [zkREPL →](https://zkrepl.dev/?gist=${id})\n\n` +
+                                    'This file can be included into other zkREPLs with ```include "gist:' +
+                                    id +
+                                    '";```',
+                            }
+                        }
+                        return fetch(
+                            id
+                                ? "https://api.github.com/gists/" + id
+                                : "https://api.github.com/gists",
+                            {
+                                method: "POST",
+                                body: JSON.stringify({
+                                    files: filesObj,
+                                }),
+                                headers: {
+                                    Authorization:
+                                        "token " +
+                                        localStorage.GithubAccessToken,
+                                },
+                            }
+                        ).then((k) => k.json())
                     }
-                    if (GistID) {
-                        filesObj["about_zkrepl.md"] = {
-                            content:
-                                `Open this in [zkREPL →](https://zkrepl.dev/?gist=${GistID})\n\n` +
-                                'This file can be included into other zkREPLs with ```include "gist:' +
-                                GistID +
-                                '";```',
-                        }
-                    }
-                    fetch(
-                        GistID
-                            ? "https://api.github.com/gists/" + GistID
-                            : "https://api.github.com/gists",
-                        {
-                            method: "POST",
-                            body: JSON.stringify({
-                                files: filesObj,
-                            }),
-                            headers: {
-                                Authorization:
-                                    "token " + localStorage.GithubAccessToken,
-                            },
-                        }
-                    )
-                        .then((k) => k.json())
+
+                    saveFile(GistID)
+                        .then((k) => {
+                            if (k.id && !GistID) {
+                                return saveFile(k.id)
+                            } else {
+                                return k
+                            }
+                        })
                         .then((k) => {
                             if (k.id) {
                                 history.replaceState(
@@ -295,19 +321,7 @@ export default function App() {
                 fetch("https://api.github.com/gists/" + GistID)
                     .then((data) => data.json())
                     .then((data) => {
-                        const tmpModels: monaco.editor.ITextModel[] = []
-                        for (const key in data?.files) {
-                            if (key === "about_zkrepl.md") continue
-                            const model = monaco.editor.createModel(
-                                data?.files[key].content ||
-                                    "// Unable to load gist",
-                                "circom",
-                                new monaco.Uri().with({ path: key })
-                            )
-                            tmpModels.push(model)
-                        }
-                        modelsRef.current = tmpModels
-                        editor.setModel(tmpModels[0])
+                        load(data)
                         run()
                     })
             } else {
@@ -348,7 +362,7 @@ export default function App() {
 
     return (
         <div className="layout">
-            <div className="main">
+            <div className="primary">
                 <div className="tabs">
                     {modelsRef.current.map((file, modelIndex) => {
                         return (
