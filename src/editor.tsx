@@ -93,6 +93,167 @@ export default function App() {
     >({})
     const GistID = new URLSearchParams(location.search).get("gist")
 
+    const run = () => {
+        if (!workerRef.current || workerRef.current!.running) {
+            if (workerRef.current) {
+                workerRef.current.terminate()
+                workerRef.current = null
+            }
+            workerRef.current = new CircomWorker()
+            circomWorker = workerRef.current
+            workerRef.current.onmessage = (e: MessageEvent) => {
+                const data = e.data
+                if (data.type === "fail") {
+                    setRunning(false)
+                    workerRef.current!.running = false
+                } else if (data.type === "done") {
+                    setRunning(false)
+                    workerRef.current!.running = false
+                } else if (data.type === "keys") {
+                    setRunning(false)
+                    workerRef.current!.running = false
+                } else if (data.type === "hover") {
+                    return replyHover(data)
+                } else if (data.type === "debug") {
+                    console.log(data.text)
+                } else if (data.type === "progress") {
+                    setProgress(data.fraction)
+                    return
+                }
+                setMessages((k) => [...k, data])
+            }
+            workerRef.current.onerror = (e) => {
+                console.error(e)
+                setMessages((k) => [
+                    ...k,
+                    {
+                        type: "error",
+                        text: e.message,
+                    },
+                ])
+            }
+        }
+        workerRef.current!.running = true
+        setRunning(Math.random() + 1)
+        setMessages([])
+        workerRef.current.postMessage({
+            type: "run",
+            files: modelsToFiles(modelsRef.current),
+        })
+    }
+
+    const modelsToFiles = (models: monaco.editor.ITextModel[]) => {
+        return models.map((x) => {
+            return {
+                value: x.getValue(),
+                name: x.uri.path.slice(1),
+                active: x.isAttachedToEditor(),
+            }
+        })
+    }
+
+    const load = (editor: monaco.editor.IStandaloneCodeEditor, data: any) => {
+        const tmpModels: monaco.editor.ITextModel[] = []
+        for (const key in data?.files) {
+            if (key === "about_zkrepl.md") continue
+            const model = monaco.editor.createModel(
+                data?.files[key].content || "// Unable to load gist",
+                "circom",
+                new monaco.Uri().with({ path: key })
+            )
+            tmpModels.push(model)
+        }
+        modelsRef.current = tmpModels
+        editor.setModel(tmpModels[0])
+    }
+    const save = () => {
+        const GistID = new URLSearchParams(location.search).get("gist")
+        const logIn = () => {
+            localStorage.GithubNavigationCodeSnapshot = JSON.stringify(
+                modelsToFiles(modelsRef.current)
+            )
+            location.href =
+                "https://github.com/login/oauth/authorize?client_id=85123c5a3a8a8f73f015&scope=gist"
+        }
+        if (
+            history.state === JSON.stringify(modelsToFiles(modelsRef.current))
+        ) {
+            // do nothing!
+            console.log("Already saved!")
+        } else if (localStorage.GithubAccessToken) {
+            setRunning(Math.random() + 1)
+
+            const saveFile = async (id: null | string) => {
+                const filesObj: Record<string, { content: string }> = {}
+                for (const model of modelsToFiles(modelsRef.current)) {
+                    filesObj[model.name] = {
+                        content: model.value,
+                    }
+                }
+                if (id) {
+                    filesObj["about_zkrepl.md"] = {
+                        content:
+                            `Open this in [zkREPL →](https://zkrepl.dev/?gist=${id})\n\n` +
+                            'This file can be included into other zkREPLs with ```include "gist:' +
+                            id +
+                            '";```',
+                    }
+                }
+                return fetch(
+                    id
+                        ? "https://api.github.com/gists/" + id
+                        : "https://api.github.com/gists",
+                    {
+                        method: "POST",
+                        body: JSON.stringify({
+                            files: filesObj,
+                        }),
+                        headers: {
+                            Authorization:
+                                "token " + localStorage.GithubAccessToken,
+                        },
+                    }
+                ).then((k) => k.json())
+            }
+
+            saveFile(GistID)
+                .then((k) => {
+                    if (k.id && !GistID) {
+                        return saveFile(k.id)
+                    } else {
+                        return k
+                    }
+                })
+                .then((k) => {
+                    if (k.id) {
+                        history.replaceState(
+                            JSON.stringify(modelsToFiles(modelsRef.current)),
+                            "",
+                            "/?gist=" + k.id
+                        )
+
+                        setMessages((m) => [
+                            ...m,
+                            {
+                                type: "save",
+                                url: `https://gist.github.com/${k.id}`,
+                                text: `Saved to Github`,
+                            },
+                        ])
+                    } else if (k.message === "Bad credentials") {
+                        logIn()
+                    } else if (k.message === "Not Found" && GistID) {
+                        // maybe trying to save to something that we don't own
+                        // we should then just "fork" it
+                        history.replaceState(null, "", "/")
+                        save()
+                    }
+                    setRunning(false)
+                })
+        } else {
+            logIn()
+        }
+    }
     React.useEffect(() => {
         if (monacoEl && !editor) {
             const OAuthCode = new URLSearchParams(location.search).get("code")
@@ -109,6 +270,7 @@ export default function App() {
                             localStorage.GithubAccessToken =
                                 k.get("access_token")
                             load(
+                                editor,
                                 JSON.parse(
                                     localStorage.GithubNavigationCodeSnapshot
                                 )
@@ -130,171 +292,6 @@ export default function App() {
                 },
             })
 
-            const modelsToFiles = (models: monaco.editor.ITextModel[]) => {
-                return models.map((x) => {
-                    return {
-                        value: x.getValue(),
-                        name: x.uri.path.slice(1),
-                        active: x.isAttachedToEditor(),
-                    }
-                })
-            }
-
-            const run = () => {
-                if (!workerRef.current || workerRef.current!.running) {
-                    if (workerRef.current) {
-                        workerRef.current.terminate()
-                        workerRef.current = null
-                    }
-                    workerRef.current = new CircomWorker()
-                    circomWorker = workerRef.current
-                    workerRef.current.onmessage = (e: MessageEvent) => {
-                        const data = e.data
-                        if (data.type === "fail") {
-                            setRunning(false)
-                            workerRef.current!.running = false
-                        } else if (data.type === "done") {
-                            setRunning(false)
-                            workerRef.current!.running = false
-                        } else if (data.type === "keys") {
-                            setRunning(false)
-                            workerRef.current!.running = false
-                        } else if (data.type === "hover") {
-                            return replyHover(data)
-                        } else if (data.type === "debug") {
-                            console.log(data.text)
-                        } else if (data.type === "progress") {
-                            setProgress(data.fraction)
-                            return
-                        }
-                        setMessages((k) => [...k, data])
-                    }
-                    workerRef.current.onerror = (e) => {
-                        console.error(e)
-                        setMessages((k) => [
-                            ...k,
-                            {
-                                type: "error",
-                                text: e.message,
-                            },
-                        ])
-                    }
-                }
-                workerRef.current!.running = true
-                setRunning(Math.random() + 1)
-                setMessages([])
-                workerRef.current.postMessage({
-                    type: "run",
-                    files: modelsToFiles(modelsRef.current),
-                })
-            }
-
-            const load = (data: any) => {
-                const tmpModels: monaco.editor.ITextModel[] = []
-                for (const key in data?.files) {
-                    if (key === "about_zkrepl.md") continue
-                    const model = monaco.editor.createModel(
-                        data?.files[key].content || "// Unable to load gist",
-                        "circom",
-                        new monaco.Uri().with({ path: key })
-                    )
-                    tmpModels.push(model)
-                }
-                modelsRef.current = tmpModels
-                editor.setModel(tmpModels[0])
-            }
-            const save = () => {
-                const GistID = new URLSearchParams(location.search).get("gist")
-                const logIn = () => {
-                    localStorage.GithubNavigationCodeSnapshot = JSON.stringify(
-                        modelsToFiles(modelsRef.current)
-                    )
-                    location.href =
-                        "https://github.com/login/oauth/authorize?client_id=85123c5a3a8a8f73f015&scope=gist"
-                }
-                if (
-                    history.state ===
-                    JSON.stringify(modelsToFiles(modelsRef.current))
-                ) {
-                    // do nothing!
-                    console.log("Already saved!")
-                } else if (localStorage.GithubAccessToken) {
-                    setRunning(Math.random() + 1)
-
-                    const saveFile = async (id: null | string) => {
-                        const filesObj: Record<string, { content: string }> = {}
-                        for (const model of modelsToFiles(modelsRef.current)) {
-                            filesObj[model.name] = {
-                                content: model.value,
-                            }
-                        }
-                        if (id) {
-                            filesObj["about_zkrepl.md"] = {
-                                content:
-                                    `Open this in [zkREPL →](https://zkrepl.dev/?gist=${id})\n\n` +
-                                    'This file can be included into other zkREPLs with ```include "gist:' +
-                                    id +
-                                    '";```',
-                            }
-                        }
-                        return fetch(
-                            id
-                                ? "https://api.github.com/gists/" + id
-                                : "https://api.github.com/gists",
-                            {
-                                method: "POST",
-                                body: JSON.stringify({
-                                    files: filesObj,
-                                }),
-                                headers: {
-                                    Authorization:
-                                        "token " +
-                                        localStorage.GithubAccessToken,
-                                },
-                            }
-                        ).then((k) => k.json())
-                    }
-
-                    saveFile(GistID)
-                        .then((k) => {
-                            if (k.id && !GistID) {
-                                return saveFile(k.id)
-                            } else {
-                                return k
-                            }
-                        })
-                        .then((k) => {
-                            if (k.id) {
-                                history.replaceState(
-                                    JSON.stringify(
-                                        modelsToFiles(modelsRef.current)
-                                    ),
-                                    "",
-                                    "/?gist=" + k.id
-                                )
-
-                                setMessages((m) => [
-                                    ...m,
-                                    {
-                                        type: "save",
-                                        url: `https://gist.github.com/${k.id}`,
-                                        text: `Saved to Github`,
-                                    },
-                                ])
-                            } else if (k.message === "Bad credentials") {
-                                logIn()
-                            } else if (k.message === "Not Found" && GistID) {
-                                // maybe trying to save to something that we don't own
-                                // we should then just "fork" it
-                                history.replaceState(null, "", "/")
-                                save()
-                            }
-                            setRunning(false)
-                        })
-                } else {
-                    logIn()
-                }
-            }
             editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyS, save)
             editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.Enter, run)
             editor.addCommand(monaco.KeyMod.Shift | monaco.KeyCode.Enter, run)
@@ -321,7 +318,7 @@ export default function App() {
                 fetch("https://api.github.com/gists/" + GistID)
                     .then((data) => data.json())
                     .then((data) => {
-                        load(data)
+                        load(editor, data)
                         run()
                     })
             } else {
@@ -489,8 +486,28 @@ export default function App() {
                 <div className="output">
                     <div className="heading">
                         <div className="description">
-                            <b>Shift-Enter</b> to run <br />
-                            <b>Cmd-S</b> to save as{" "}
+                            <b>Shift-Enter</b> to{" "}
+                            <a
+                                href="#"
+                                onClick={(e) => {
+                                    e.preventDefault()
+                                    run()
+                                }}
+                            >
+                                run
+                            </a>{" "}
+                            <br />
+                            <b>Cmd-S</b> to{" "}
+                            <a
+                                href="#"
+                                onClick={(e) => {
+                                    e.preventDefault()
+                                    save()
+                                }}
+                            >
+                                save
+                            </a>{" "}
+                            as{" "}
                             {GistID ? (
                                 <a
                                     href={`https://gist.github.com/${GistID}`}
@@ -522,6 +539,20 @@ export default function App() {
                                 </a>
                             ) : (
                                 <Ansi>{m.text}</Ansi>
+                            )}
+                            {m.type === "save" && (
+                                <div className="embed-snippet">
+                                    <textarea
+                                        readOnly
+                                        onClick={(e) => {
+                                            ;(
+                                                e.target as HTMLTextAreaElement
+                                            ).select()
+                                            document.execCommand("copy")
+                                        }}
+                                        value={`<iframe src="https://zkrepl.dev/?gist=${GistID}" height="400" width="1000" style="border:1px solid #ddd"></iframe>`}
+                                    />
+                                </div>
                             )}
                             {m.files && (
                                 <div className="files">
