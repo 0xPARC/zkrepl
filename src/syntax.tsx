@@ -6,6 +6,7 @@ export let replyHover = (data: any) => {}
 
 monaco.languages.registerHoverProvider("circom", {
     provideHover: async function (model, position) {
+        if (!circomWorker) return null
         if ((circomWorker as any).running) return null
 
         const haystack = model.getLineContent(position.lineNumber)

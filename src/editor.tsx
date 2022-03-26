@@ -166,32 +166,36 @@ export default function App() {
         modelsRef.current = tmpModels
         editor.setModel(tmpModels[0])
     }
+    const exportJSON = () => {
+        const filesObj: Record<string, { content: string }> = {}
+        for (const model of modelsToFiles(modelsRef.current)) {
+            filesObj[model.name] = {
+                content: model.value,
+            }
+        }
+        return {
+            files: filesObj,
+        }
+    }
     const save = () => {
         const GistID = new URLSearchParams(location.search).get("gist")
         const logIn = () => {
             localStorage.GithubNavigationCodeSnapshot = JSON.stringify(
-                modelsToFiles(modelsRef.current)
+                exportJSON()
             )
             location.href =
                 "https://github.com/login/oauth/authorize?client_id=85123c5a3a8a8f73f015&scope=gist"
         }
-        if (
-            history.state === JSON.stringify(modelsToFiles(modelsRef.current))
-        ) {
+        if (history.state === JSON.stringify(exportJSON())) {
             // do nothing!
             console.log("Already saved!")
         } else if (localStorage.GithubAccessToken) {
             setRunning(Math.random() + 1)
 
             const saveFile = async (id: null | string) => {
-                const filesObj: Record<string, { content: string }> = {}
-                for (const model of modelsToFiles(modelsRef.current)) {
-                    filesObj[model.name] = {
-                        content: model.value,
-                    }
-                }
+                const filesObj = exportJSON()
                 if (id) {
-                    filesObj["about_zkrepl.md"] = {
+                    filesObj.files["about_zkrepl.md"] = {
                         content:
                             `Open this in [zkREPL →](https://zkrepl.dev/?gist=${id})\n\n` +
                             'This file can be included into other zkREPLs with ```include "gist:' +
@@ -205,9 +209,7 @@ export default function App() {
                         : "https://api.github.com/gists",
                     {
                         method: "POST",
-                        body: JSON.stringify({
-                            files: filesObj,
-                        }),
+                        body: JSON.stringify(filesObj),
                         headers: {
                             Authorization:
                                 "token " + localStorage.GithubAccessToken,
@@ -227,7 +229,7 @@ export default function App() {
                 .then((k) => {
                     if (k.id) {
                         history.replaceState(
-                            JSON.stringify(modelsToFiles(modelsRef.current)),
+                            JSON.stringify(exportJSON()),
                             "",
                             "/?gist=" + k.id
                         )
@@ -256,6 +258,47 @@ export default function App() {
     }
     React.useEffect(() => {
         if (monacoEl && !editor) {
+            const editor = monaco.editor.create(monacoEl.current!, {
+                language: "circom",
+                theme: "vs",
+
+                automaticLayout: true, // the important part
+                hover: {
+                    enabled: true,
+                },
+            })
+
+            window.addEventListener("beforeunload", () => {
+                sessionStorage.ZKReplState = JSON.stringify(exportJSON())
+            })
+
+            window.addEventListener("keydown", (e) => {
+                if ((e.metaKey || e.ctrlKey) && e.key === "r") {
+                    e.preventDefault()
+                }
+            })
+
+            editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyS, save)
+            editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.Enter, run)
+            editor.addCommand(monaco.KeyMod.Shift | monaco.KeyCode.Enter, run)
+            editor.addCommand(
+                monaco.KeyMod.CtrlCmd | monaco.KeyCode.Period,
+                function () {
+                    console.log("Abort kernel!")
+                    setRunning(false)
+                    setMessages((k) => [
+                        ...k,
+                        {
+                            type: "abort",
+                            text: "Execution manually interrupted",
+                        },
+                    ])
+                    if (workerRef.current) {
+                        workerRef.current.terminate()
+                        workerRef.current = null
+                    }
+                }
+            )
             const OAuthCode = new URLSearchParams(location.search).get("code")
             if (OAuthCode) {
                 history.replaceState(null, "", "/")
@@ -280,41 +323,11 @@ export default function App() {
                             alert("Failed to get access token")
                         }
                     })
-            }
-
-            const editor = monaco.editor.create(monacoEl.current!, {
-                language: "circom",
-                theme: "vs",
-
-                automaticLayout: true, // the important part
-                hover: {
-                    enabled: true,
-                },
-            })
-
-            editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyS, save)
-            editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.Enter, run)
-            editor.addCommand(monaco.KeyMod.Shift | monaco.KeyCode.Enter, run)
-            editor.addCommand(
-                monaco.KeyMod.CtrlCmd | monaco.KeyCode.Period,
-                function () {
-                    console.log("Abort kernel!")
-                    setRunning(false)
-                    setMessages((k) => [
-                        ...k,
-                        {
-                            type: "abort",
-                            text: "Execution manually interrupted",
-                        },
-                    ])
-                    if (workerRef.current) {
-                        workerRef.current.terminate()
-                        workerRef.current = null
-                    }
-                }
-            )
-
-            if (GistID) {
+            } else if (sessionStorage.ZKReplState) {
+                load(editor, JSON.parse(sessionStorage.ZKReplState))
+                delete sessionStorage.ZKReplState
+                run()
+            } else if (GistID) {
                 fetch("https://api.github.com/gists/" + GistID)
                     .then((data) => data.json())
                     .then((data) => {
@@ -322,20 +335,11 @@ export default function App() {
                         run()
                     })
             } else {
-                const tmpModels: monaco.editor.ITextModel[] = []
-                const files: Record<string, string> = {
-                    "main.circom": codeExample,
-                }
-                for (const key in files) {
-                    const model = monaco.editor.createModel(
-                        files[key],
-                        "circom",
-                        new monaco.Uri().with({ path: key })
-                    )
-                    tmpModels.push(model)
-                }
-                modelsRef.current = tmpModels
-                editor.setModel(tmpModels[0])
+                load(editor, {
+                    files: {
+                        "main.circom": { content: codeExample },
+                    },
+                })
                 run()
             }
             setEditor(editor)
@@ -362,6 +366,37 @@ export default function App() {
             <div className="primary">
                 <div className="tabs">
                     {modelsRef.current.map((file, modelIndex) => {
+                        const deleteFile = (e: React.MouseEvent) => {
+                            if (
+                                (file?.getValue()?.length || 0) < 30 ||
+                                file?.getValue() === codeExample ||
+                                confirm(
+                                    `Are you sure you want to remove "${file.uri.path.slice(
+                                        1
+                                    )}"?`
+                                )
+                            ) {
+                                file.dispose()
+
+                                if (modelsRef.current.length == 1) {
+                                    const model = monaco.editor.createModel(
+                                        codeExample,
+                                        "circom",
+                                        new monaco.Uri().with({
+                                            path: "main.circom",
+                                        })
+                                    )
+                                    modelsRef.current.push(model)
+                                    editor!.setModel(model)
+                                }
+
+                                modelsRef.current.splice(modelIndex, 1)
+                                editor?.setModel(modelsRef.current[0])
+                                setMessages((k) => k.slice(0))
+                                e.stopPropagation()
+                            }
+                        }
+
                         return (
                             <div
                                 className={
@@ -371,7 +406,14 @@ export default function App() {
                                         ? "active"
                                         : "inactive")
                                 }
-                                onClick={(e) => switchEditor(file)}
+                                onClick={(e) => {
+                                    switchEditor(file)
+                                }}
+                                onMouseUp={(e) => {
+                                    if (e.button == 1) {
+                                        deleteFile(e)
+                                    }
+                                }}
                                 key={modelIndex}
                             >
                                 <input
@@ -417,33 +459,7 @@ export default function App() {
                                     }}
                                 />
 
-                                <div
-                                    className="x"
-                                    onClick={(e) => {
-                                        if (modelsRef.current.length == 1)
-                                            return
-                                        if (
-                                            (file?.getValue()?.length || 0) <
-                                                30 ||
-                                            confirm(
-                                                `Are you sure you want to remove "${file.uri.path.slice(
-                                                    1
-                                                )}"?`
-                                            )
-                                        ) {
-                                            file.dispose()
-                                            modelsRef.current.splice(
-                                                modelIndex,
-                                                1
-                                            )
-                                            editor?.setModel(
-                                                modelsRef.current[0]
-                                            )
-                                            setMessages((k) => k.slice(0))
-                                            e.stopPropagation()
-                                        }
-                                    }}
-                                >
+                                <div className="x" onClick={deleteFile}>
                                     <div>×</div>
                                 </div>
                             </div>
@@ -464,7 +480,7 @@ export default function App() {
                                 fileName = `untitled${i}.circom`
                             }
                             const model = monaco.editor.createModel(
-                                "// Type your code here",
+                                codeExample,
                                 "circom",
                                 new monaco.Uri().with({
                                     path: fileName,
@@ -645,6 +661,11 @@ function LoadingIndicator() {
             {time > 200 && (
                 <div className="time">{(time / 1000).toFixed(2)}s</div>
             )}
+            <div className="time">
+                <small>
+                    <b>Cmd-.</b> to interrupt
+                </small>
+            </div>
         </div>
     )
 }
