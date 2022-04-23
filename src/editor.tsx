@@ -548,7 +548,12 @@ export default function App() {
                     {messages.map((m, i) => (
                         <div key={i} className="message">
                             <div className="label">{m.type}: </div>
-
+                            {m.type === "keys" && (
+                                <div className="insecure">
+                                    WARNING: These keys are strictly for testing
+                                    purposes, and are generated insecurely!
+                                </div>
+                            )}
                             {m.url ? (
                                 <a href={m.url}>
                                     <Ansi>{m.text}</Ansi>
@@ -602,7 +607,7 @@ export default function App() {
                         !running &&
                         workerRef.current && (
                             <div>
-                                <div className="label">Prove/Verify Keys: </div>
+                                <div className="label">Generate Keys: </div>
                                 <div className="phase2">
                                     <button
                                         onClick={() => {

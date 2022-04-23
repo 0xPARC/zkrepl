@@ -358,7 +358,6 @@ async function generateGroth16ProvingKey() {
     await fdR1cs.close()
 
     const ptauArray = await fetchPot(r1cs.nConstraints)
-
     const zkFile0 = { type: "mem", data: null }
     const [logger, zKeyLog] = createLogger()
     const circuitHash = await zKey.newZKey(r1csFile, ptauArray, zkFile0, logger)
@@ -479,6 +478,7 @@ async function fetchPot(nConstraints: number) {
         })
     )
     const ptauArray = new Uint8Array(await res.arrayBuffer())
+    // TODO: verify that this ptau file is correct
     return ptauArray
 }
 
