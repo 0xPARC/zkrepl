@@ -1,5 +1,9 @@
 export function randomBytes(numBytes: number) {
-    return crypto.getRandomValues(new Uint8Array(numBytes))
+    return Buffer.from(crypto.getRandomValues(new Uint8Array(numBytes)))
 }
 
-export default { randomBytes }
+export function randomFillSync(buffer: Uint8Array) {
+    return crypto.getRandomValues(buffer)
+}
+
+export default { randomBytes, randomFillSync }

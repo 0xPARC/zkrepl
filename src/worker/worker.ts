@@ -283,10 +283,52 @@ onmessage = (e: MessageEvent) => {
         generatePLONKProvingKey().catch((err) => {
             postMessage({ type: "fail", text: err.message })
         })
+    } else if (data.type === "verify") {
+        verifyZKey(data.data).catch((err) => {
+            postMessage({ type: "fail", text: err.message })
+        })
     }
 }
 
-async function generatePLONKProvingKey() {
+async function verifyZKey(zKeyData: ArrayBuffer) {
+    const { r1cs, r1csFile } = await getR1CS()
+
+    const ptauArray = await fetchPot(r1cs.nConstraints)
+
+    const [logger, zKeyLog] = createLogger()
+
+    const initFileName = { type: "bigMem" }
+    const circuitHash = await zKey.newZKey(
+        r1csFile,
+        ptauArray,
+        initFileName,
+        logger
+    )
+
+    // clear our log
+    while (zKeyLog.pop()) {}
+
+    const result = await zKey.verifyFromInit(
+        initFileName,
+        ptauArray,
+        new Uint8Array(zKeyData),
+        logger
+    )
+
+    // const circuitHashStr = Buffer.from(circuitHash).toString("hex")
+
+    postMessage({
+        type: "verified",
+        text: result
+            ? `Successfully verified zkey matches circuit`
+            : "Circuit does not match zkey",
+    })
+
+    if (zKeyLog.length > 0)
+        postMessage({ type: "log", text: zKeyLog.join("\n") })
+}
+
+async function getR1CS() {
     const wasmFs = await wasmFsPromise
     const r1csFile = wasmFs.fs.readFileSync(`${filePrefix}.r1cs`)
     const { fd: fdR1cs, sections: sectionsR1cs } =
@@ -297,7 +339,11 @@ async function generatePLONKProvingKey() {
         /* singleThread */ true
     )
     await fdR1cs.close()
+    return { r1cs, r1csFile }
+}
 
+async function generatePLONKProvingKey() {
+    const { r1cs, r1csFile } = await getR1CS()
     // TODO: be better at estimating pTau size?
     const ptauArray = await fetchPot(
         4 * 3 * r1cs.nConstraints + r1cs.nPubInputs + r1cs.nOutputs
@@ -324,8 +370,14 @@ async function generatePLONKProvingKey() {
         },
     })
 }
+type Logger = {
+    info(str: string): void
+    warn(str: string): void
+    debug(str: string): void
+    error(str: string): void
+}
 
-function createLogger() {
+function createLogger(): [Logger, string[]] {
     const zKeyLog: string[] = []
     const logger = {
         info(str: string) {
@@ -346,16 +398,7 @@ function createLogger() {
 }
 
 async function generateGroth16ProvingKey() {
-    const wasmFs = await wasmFsPromise
-    const r1csFile = wasmFs.fs.readFileSync(filePrefix + ".r1cs")
-    const { fd: fdR1cs, sections: sectionsR1cs } =
-        await binFileUtils.readBinFile(r1csFile, "r1cs", 1, 1 << 22, 1 << 24)
-    const r1cs = await readR1csHeader(
-        fdR1cs,
-        sectionsR1cs,
-        /* singleThread */ true
-    )
-    await fdR1cs.close()
+    const { r1cs, r1csFile } = await getR1CS()
 
     const ptauArray = await fetchPot(r1cs.nConstraints)
     const zkFile0 = { type: "mem", data: null }

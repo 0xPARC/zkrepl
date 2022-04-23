@@ -112,6 +112,9 @@ export default function App() {
                 } else if (data.type === "keys") {
                     setRunning(false)
                     workerRef.current!.running = false
+                } else if (data.type === "verified") {
+                    setRunning(false)
+                    workerRef.current!.running = false
                 } else if (data.type === "hover") {
                     return replyHover(data)
                 } else if (data.type === "debug") {
@@ -604,11 +607,43 @@ export default function App() {
                     ))}
                     {messages.some((k) => k.type === "done") &&
                         !messages.some((k) => k.type === "keys") &&
+                        !messages.some((k) => k.type === "verified") &&
                         !running &&
                         workerRef.current && (
                             <div>
-                                <div className="label">Generate Keys: </div>
+                                <div className="label">Keys: </div>
                                 <div className="phase2">
+                                    <input
+                                        type="file"
+                                        id="zkey_upload"
+                                        accept=".zkey"
+                                        className="hidden-file"
+                                        onChange={(e) => {
+                                            const file = e.target?.files?.[0]
+                                            if (file) {
+                                                const reader = new FileReader()
+                                                reader.onload = () => {
+                                                    workerRef.current!.postMessage(
+                                                        {
+                                                            type: "verify",
+                                                            data: reader.result,
+                                                        }
+                                                    )
+                                                    setRunning(Math.random())
+                                                }
+                                                reader.readAsArrayBuffer(file)
+                                            }
+                                        }}
+                                    ></input>
+                                    <button
+                                        onClick={() => {
+                                            document
+                                                .getElementById("zkey_upload")!
+                                                .click()
+                                        }}
+                                    >
+                                        Verify
+                                    </button>
                                     <button
                                         onClick={() => {
                                             workerRef.current!.postMessage({

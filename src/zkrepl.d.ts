@@ -4,6 +4,18 @@ declare module "circom2/vendor/wasi" {
 
 declare module "snarkjs" {
     export const zKey: {
+        verifyFromR1cs(
+            r1csFileName: any,
+            pTauFileName: any,
+            zkeyFileName: any,
+            logger?: any
+        ): Promise<boolean>
+        verifyFromInit(
+            initFileName: any,
+            pTauFileName: any,
+            zkeyFileName: any,
+            logger?: any
+        ): Promise<boolean>
         newZKey(
             r1csName: any,
             ptauName: any,
