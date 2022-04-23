@@ -20,7 +20,7 @@
     },
     "homepage": "https://github.com/antimatter15/zkrepl#readme",
     "dependencies": {
-        "@iden3/binfileutils": "^0.0.8",
+        "@iden3/binfileutils": "0.0.10",
         "@types/node": "^16.11.12",
         "@wasmer/wasi": "^0.12.0",
         "@wasmer/wasmfs": "^0.12.0",
@@ -29,14 +29,14 @@
         "buffer": "^6.0.3",
         "buffer-es6": "^4.9.3",
         "circom2": "^0.2.2",
-        "ffjavascript": "0.2.39",
+        "ffjavascript": "0.2.48",
         "monaco-editor": "^0.30.1",
         "patch-package": "^6.4.7",
         "path-browserify": "^1.0.1",
-        "r1csfile": "^0.0.33",
+        "r1csfile": "0.0.35",
         "react": "^18.0.0",
         "react-dom": "^18.0.0-rc.3",
-        "snarkjs": "^0.4.10",
+        "snarkjs": "^0.4.16",
         "unzipit": "^1.3.6"
     },
     "devDependencies": {

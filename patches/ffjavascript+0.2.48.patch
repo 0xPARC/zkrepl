@@ -1,8 +1,8 @@
 diff --git a/node_modules/ffjavascript/src/threadman.js b/node_modules/ffjavascript/src/threadman.js
-index f20e2a4..99f7d65 100644
+index 61310a9..aa7db2a 100644
 --- a/node_modules/ffjavascript/src/threadman.js
 +++ b/node_modules/ffjavascript/src/threadman.js
-@@ -67,6 +67,9 @@ const workerSource = "data:application/javascript;base64," + threadSource;
+@@ -53,6 +53,9 @@ const workerSource = "data:application/javascript;base64," + threadSource;
  
  
  export default async function buildThreadManager(wasm, singleThread) {
