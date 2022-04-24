@@ -1,5 +1,7 @@
-import React from "react"
-
+import Ansi from "ansi-to-react"
+// this is a workaround for what seems to be some kind of bug around
+// importing raw urls from webworkers in production builds
+import wasmURL from "circom2/circom.wasm?url"
 import "monaco-editor/esm/vs/editor/browser/controller/coreCommands.js"
 // import 'monaco-editor/esm/vs/editor/browser/widget/codeEditorWidget.js';
 // import 'monaco-editor/esm/vs/editor/browser/widget/diffEditorWidget.js';
@@ -32,6 +34,7 @@ import "monaco-editor/esm/vs/editor/contrib/indentation/indentation.js"
 // import 'monaco-editor/esm/vs/editor/contrib/linkedEditing/linkedEditing.js';
 // import 'monaco-editor/esm/vs/editor/contrib/links/links.js';
 import "monaco-editor/esm/vs/editor/contrib/multicursor/multicursor.js"
+import * as monaco from "monaco-editor/esm/vs/editor/editor.api"
 // import 'monaco-editor/esm/vs/editor/contrib/parameterHints/parameterHints.js';
 // import 'monaco-editor/esm/vs/editor/contrib/rename/rename.js';
 // import 'monaco-editor/esm/vs/editor/contrib/smartSelect/smartSelect.js';
@@ -45,6 +48,10 @@ import "monaco-editor/esm/vs/editor/contrib/multicursor/multicursor.js"
 // import 'monaco-editor/esm/vs/editor/contrib/wordPartOperations/wordPartOperations.js';
 // import 'monaco-editor/esm/vs/editor/standalone/browser/accessibilityHelp/accessibilityHelp.js';
 import "monaco-editor/esm/vs/editor/standalone/browser/iPadShowKeyboard/iPadShowKeyboard.js"
+import { initVimMode } from "monaco-vim"
+import React from "react"
+import circomLib from "./data/circomlib.zip?url"
+import codeExample from "./data/example.circom?raw"
 // import 'monaco-editor/esm/vs/editor/standalone/browser/inspectTokens/inspectTokens.js';
 // import 'monaco-editor/esm/vs/editor/standalone/browser/quickAccess/standaloneCommandsQuickAccess.js';
 // import 'monaco-editor/esm/vs/editor/standalone/browser/quickAccess/standaloneGotoLineQuickAccess.js';
@@ -52,20 +59,10 @@ import "monaco-editor/esm/vs/editor/standalone/browser/iPadShowKeyboard/iPadShow
 // import 'monaco-editor/esm/vs/editor/standalone/browser/quickAccess/standaloneHelpQuickAccess.js';
 // import 'monaco-editor/esm/vs/editor/standalone/browser/referenceSearch/standaloneReferenceSearch.js';
 // import 'monaco-editor/esm/vs/editor/standalone/browser/toggleHighContrast/toggleHighContrast.js';
-
 import "./syntax"
-import codeExample from "./data/example.circom?raw"
-import CircomWorker from "./worker/worker?worker"
-import Ansi from "ansi-to-react"
-
-import * as monaco from "monaco-editor/esm/vs/editor/editor.api"
-
-// this is a workaround for what seems to be some kind of bug around
-// importing raw urls from webworkers in production builds
-import wasmURL from "circom2/circom.wasm?url"
-import circomLib from "./data/circomlib.zip?url"
-
 import { replyHover } from "./syntax"
+import CircomWorker from "./worker/worker?worker"
+
 console.log(circomLib, wasmURL)
 
 type Message = {
@@ -270,6 +267,8 @@ export default function App() {
                     enabled: true,
                 },
             })
+
+            initVimMode(editor, document.getElementsByClassName("statusbar")[0])
 
             window.addEventListener("beforeunload", () => {
                 sessionStorage.ZKReplState = JSON.stringify(exportJSON())
@@ -500,6 +499,8 @@ export default function App() {
                 </div>
 
                 <div className="editor" ref={monacoEl}></div>
+
+                <div className="statusbar"></div>
             </div>
             <div className="sidebar">
                 <div className="output">

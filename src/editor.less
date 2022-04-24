@@ -32,6 +32,27 @@ a {
     flex: 1;
 }
 
+.statusbar,
+.statusbar input {
+    font-family: "Courier New", Courier, monospace;
+    font-size: 15px;
+    color: gray;
+}
+
+.statusbar {
+    display: flex !important;
+    font-weight: bold;
+    padding: 0 10px;
+    flex-basis: 40px;
+    align-items: center;
+
+    input {
+        outline: none;
+        border: none;
+        background: transparent;
+    }
+}
+
 code {
     font-family: inherit;
     font-size: small;
@@ -95,13 +116,14 @@ body {
         font-size: small;
         text-transform: uppercase;
     }
-    .files, .insecure {
+    .files,
+    .insecure {
         font-size: small;
         padding-left: 20px;
         padding-bottom: 10px;
     }
     .insecure {
-        color: #ff9800
+        color: #ff9800;
     }
     .file {
         &:hover {
