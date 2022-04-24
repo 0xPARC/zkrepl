@@ -605,11 +605,11 @@ export default function App() {
                             )}
                         </div>
                     ))}
-                    {messages.some((k) => k.type === "done") &&
-                        !messages.some((k) => k.type === "keys") &&
-                        !messages.some((k) => k.type === "verified") &&
-                        !running &&
-                        workerRef.current && (
+                    {
+                        // messages.some((k) => k.type === "done") &&
+                        //     !messages.some((k) => k.type === "keys") &&
+                        //     !messages.some((k) => k.type === "verified") &&
+                        !running && workerRef.current && (
                             <div>
                                 <div className="label">Keys: </div>
                                 <div className="phase2">
@@ -635,15 +635,7 @@ export default function App() {
                                             }
                                         }}
                                     ></input>
-                                    <button
-                                        onClick={() => {
-                                            document
-                                                .getElementById("zkey_upload")!
-                                                .click()
-                                        }}
-                                    >
-                                        Verify
-                                    </button>
+
                                     <button
                                         onClick={() => {
                                             workerRef.current!.postMessage({
@@ -666,9 +658,19 @@ export default function App() {
                                     >
                                         PLONK
                                     </button>
+                                    <button
+                                        onClick={() => {
+                                            document
+                                                .getElementById("zkey_upload")!
+                                                .click()
+                                        }}
+                                    >
+                                        Verify
+                                    </button>
                                 </div>
                             </div>
-                        )}
+                        )
+                    }
                     {progress !== 1 && (
                         <div className="progress-container">
                             <progress value={progress} />

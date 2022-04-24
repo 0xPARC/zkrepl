@@ -5,6 +5,8 @@ import { readR1csHeader } from "r1csfile"
 import { Scalar } from "ffjavascript"
 import groth16SolidityVerifierTemplate from "../data/groth16.sol?raw"
 import plonkSolidityVerifierTemplate from "../data/plonk.sol?raw"
+import snarkJsTemplate from "../data/snarkjs.min.js?raw"
+import appTemplate from "../data/demo.html?raw"
 
 // import { buildThreadManager } from "ffjavascript/src/threadman"
 
@@ -320,8 +322,8 @@ async function verifyZKey(zKeyData: ArrayBuffer) {
     postMessage({
         type: "verified",
         text: result
-            ? `Successfully verified zkey matches circuit`
-            : "Circuit does not match zkey",
+            ? `✅ Successfully verified zkey matches circuit`
+            : "❌ Circuit does not match zkey",
     })
 
     if (zKeyLog.length > 0)
@@ -425,12 +427,30 @@ async function generateGroth16ProvingKey() {
         groth16: groth16SolidityVerifierTemplate,
     })
 
+    const wasmFs = await wasmFsPromise
     postMessage({
         type: "keys",
         files: {
             [filePrefix + ".groth16.zkey"]: zkFile.data,
             [filePrefix + ".groth16.vkey.json"]: vkeyResult,
             [filePrefix + ".groth16.sol"]: solidityProver,
+            [filePrefix + ".html"]: appTemplate
+                .replace("/* {{SNARKJS}} */", snarkJsTemplate)
+                .replace(
+                    "{{ZKEY_DATA}}",
+                    "data:application/octet-stream;base64," +
+                        Buffer.from(zkFile.data as any).toString("base64")
+                )
+                .replace("{{VKEY_DATA}}", vkeyResult)
+                .replace(
+                    "{{WASM_URL}}",
+                    "data:application/wasm;base64," +
+                        Buffer.from(
+                            wasmFs.fs.readFileSync(
+                                `${filePrefix}_js/${filePrefix}.wasm`
+                            ) as Buffer
+                        ).toString("base64")
+                ),
         },
     })
 }
