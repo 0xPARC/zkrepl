@@ -79,8 +79,10 @@ export default function App() {
     const [messages, setMessages] = React.useState<Message[]>([])
     const [editor, setEditor] =
         React.useState<monaco.editor.IStandaloneCodeEditor | null>(null)
+    const [vimMode, setVimMode] = React.useState<any>()
     const modelsRef = React.useRef<monaco.editor.ITextModel[]>([])
     const monacoEl = React.useRef(null)
+    const statusBarEl = React.useRef(null)
     const workerRef = React.useRef<(Worker & { running?: boolean }) | null>(
         null
     )
@@ -257,7 +259,7 @@ export default function App() {
         }
     }
     React.useEffect(() => {
-        if (monacoEl && !editor) {
+        if (monacoEl && statusBarEl && !editor) {
             const editor = monaco.editor.create(monacoEl.current!, {
                 language: "circom",
                 theme: "vs",
@@ -267,8 +269,6 @@ export default function App() {
                     enabled: true,
                 },
             })
-
-            initVimMode(editor, document.getElementsByClassName("statusbar")[0])
 
             window.addEventListener("beforeunload", () => {
                 sessionStorage.ZKReplState = JSON.stringify(exportJSON())
@@ -344,11 +344,18 @@ export default function App() {
                 })
                 run()
             }
+
             setEditor(editor)
+
+            if (localStorage.getItem("vim-editor")) {
+                const vimMode = initVimMode(editor, statusBarEl.current)
+
+                setVimMode(vimMode)
+            }
         }
 
         return () => editor?.dispose()
-    }, [monacoEl.current])
+    }, [monacoEl.current, statusBarEl.current])
 
     const switchEditor = (file: monaco.editor.ITextModel) => {
         const saveState = editor?.saveViewState()
@@ -500,13 +507,46 @@ export default function App() {
 
                 <div className="editor" ref={monacoEl}></div>
 
-                <div className="statusbar"></div>
+                <div
+                    className="statusbar"
+                    style={{
+                        display: !vimMode ? "none" : "flex",
+                    }}
+                >
+                    <div ref={statusBarEl} />
+                </div>
+
+                <div className="toolbar">
+                    <div
+                        onClick={() => {
+                            if (!vimMode) {
+                                const vimMode = initVimMode(
+                                    editor,
+                                    statusBarEl.current
+                                )
+
+                                localStorage.setItem("vim-editor", "true")
+
+                                setVimMode(vimMode)
+                            } else {
+                                vimMode.dispose()
+
+                                localStorage.removeItem("vim-editor")
+
+                                setVimMode(null)
+                            }
+                        }}
+                        className={!vimMode ? "button" : "button active"}
+                    >
+                        VIM
+                    </div>
+                </div>
             </div>
             <div className="sidebar">
                 <div className="output">
                     <div className="heading">
                         <div className="description">
-                            <b>Shift-Enter</b> to{" "}
+                            <b>CMD-Enter</b> to{" "}
                             <a
                                 href="#"
                                 onClick={(e) => {
