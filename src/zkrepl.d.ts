@@ -105,6 +105,10 @@ declare module "r1csfile" {
     ): Promise<R1CSHeader>
 }
 
+declare module "monaco-vim" {
+    export function initVimMode(editor: any, statusBarClass: any): void
+}
+
 declare module "ffjavascript" {
     export const Scalar: any
 }
