@@ -158,6 +158,8 @@ monaco.languages.setMonarchTokensProvider("circom", {
         "public",
         "template",
         "component",
+        "parallel",
+        "custom",
         "var",
         "function",
         "return",
