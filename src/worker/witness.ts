@@ -1,7 +1,7 @@
 export default async function builder(
     code: BufferSource,
     options: {
-        log: (value: bigint) => void
+        log: (value: bigint, label?: string) => void
     }
 ) {
     options = options || {}
@@ -68,7 +68,8 @@ export default async function builder(
             arr[shared_rw_memory_size - 1 - j] =
                 instance.exports.readSharedRWMemory(j)
         }
-        options.log(fromArray32(arr))
+        const label = getMessage()
+        options.log(fromArray32(arr), label)
     }
 }
 

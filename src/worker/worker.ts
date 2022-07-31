@@ -76,8 +76,12 @@ async function bootWasm(files: File[]) {
 
         if (!opts.nowtns) {
             witness = await witnessBuilder(wasmData, {
-                log(message: bigint) {
-                    logs.push(message.toString())
+                log(message: bigint, label?: string) {
+                    if (label) {
+                        logs.push(label + ": " + message.toString())
+                    } else {
+                        logs.push(message.toString())
+                    }
                 },
             })
         }
