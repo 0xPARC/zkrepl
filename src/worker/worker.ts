@@ -115,10 +115,12 @@ async function bootWasm(files: File[]) {
             text: `To specify inputs, add to your circuit: \n\nINPUT = { "a": "1234" }`,
         })
     }
+    try {
+        if (witness) wtnsFile = await witness.calculateWTNSBin(inputObj, true)
+    } finally {
+        if (logs.length > 0) postMessage({ type: "log", text: logs.join("\n") })
+    }
 
-    if (witness) wtnsFile = await witness.calculateWTNSBin(inputObj, true)
-
-    if (logs.length > 0) postMessage({ type: "log", text: logs.join("\n") })
     // console.log(witness)
 
     if (r1cs && r1cs.nOutputs > 0) {

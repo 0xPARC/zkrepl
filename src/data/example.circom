@@ -1,4 +1,4 @@
-pragma circom 2.0.3;
+pragma circom 2.0.6;
 
 include "circomlib/poseidon.circom";
 // include "https://github.com/0xPARC/circom-secp256k1/blob/master/circuits/bigint.circom";
@@ -16,7 +16,7 @@ template Example () {
     hash.inputs[0] <== a;
     hash.inputs[1] <== b;
 
-    log(hash.out);
+    log("hash", hash.out);
 }
 
 component main { public [ a ] } = Example();
