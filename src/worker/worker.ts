@@ -521,13 +521,13 @@ async function fetchPot(nConstraints: number) {
             size: 75580568,
         },
         {
-            url: "https://dweb.link/ipfs/bafybeib6a55iwy4666wxcwo7vy756sn36cwyx7u2u5idqcjxopwa7wpb3m",
+            url: "https://bafybeih4ffiue7ac3cnahd2biyu3aqax3avcpwpnftj7etkuj3alp563fi.ipfs.dweb.link/powersOfTau28_hez_final_17.ptau",
             name: "powersOfTau28_hez_final_17.ptau",
             maxConstraints: 1 << 17,
             size: 151078040,
         },
         {
-            url: "https://dweb.link/ipfs/bafybeidmnn4gwlirvok6vllpu4b7hkgheyemmptmeqgmhk3ony6aanv77e",
+            url: "https://bafybeifg7o3tjsjvphzmghckydrj6cvebzrulgljgzmq2j5fu4g5p3nxpu.ipfs.dweb.link/powersOfTau28_hez_final_18.ptau",
             name: "powersOfTau28_hez_final_18.ptau",
             maxConstraints: 1 << 18,
             size: 302072984,
