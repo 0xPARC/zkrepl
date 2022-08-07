@@ -16,6 +16,8 @@ import { zKey, plonk } from "snarkjs"
 
 let wtnsFile: Uint8Array
 let filePrefix: string
+let parsedInputJSON: any
+let zkreplURL: string
 
 type File = {
     value: string
@@ -109,6 +111,7 @@ async function bootWasm(files: File[]) {
     let inputObj: Record<string, string | string[]> = {}
     if (input) {
         inputObj = JSON.parse(input[1])
+        parsedInputJSON = inputObj
     } else if (r1cs && r1cs.nPrvInputs + r1cs.nPubInputs > 0) {
         postMessage({
             type: "stderr",
@@ -284,10 +287,12 @@ onmessage = (e: MessageEvent) => {
             postMessage({ type: "hover", text: "" })
         })
     } else if (data.type === "groth16") {
+        zkreplURL = data.url
         generateGroth16ProvingKey().catch((err) => {
             postMessage({ type: "fail", text: err.message })
         })
     } else if (data.type === "plonk") {
+        zkreplURL = data.url
         generatePLONKProvingKey().catch((err) => {
             postMessage({ type: "fail", text: err.message })
         })
@@ -356,6 +361,7 @@ async function generatePLONKProvingKey() {
     const ptauArray = await fetchPot(
         4 * 3 * r1cs.nConstraints + r1cs.nPubInputs + r1cs.nOutputs
     )
+
     const zkFile = { type: "mem", data: null }
     const [logger, zKeyLog] = createLogger()
     await plonk.setup(r1csFile, ptauArray, zkFile, logger)
@@ -368,16 +374,44 @@ async function generatePLONKProvingKey() {
     const solidityProver = await zKey.exportSolidityVerifier(zkFile.data, {
         plonk: plonkSolidityVerifierTemplate,
     })
-
     postMessage({
         type: "keys",
         files: {
             [filePrefix + ".plonk.zkey"]: zkFile.data,
             [filePrefix + ".plonk.vkey.json"]: vkeyResult,
             [filePrefix + ".plonk.sol"]: solidityProver,
+            [filePrefix + ".plonk.html"]: await generateSnarkTemplate(
+                zkFile,
+                vkeyResult
+            ),
         },
     })
 }
+
+async function generateSnarkTemplate(zkFile, vkeyResult) {
+    const wasmFs = await wasmFsPromise
+
+    return appTemplate
+        .replace('"{{INPUT_JSON}}"', JSON.stringify(parsedInputJSON))
+        .replace('"{{VKEY_DATA}}"', vkeyResult)
+        .replace("{{ZKREPL_URL}}", zkreplURL)
+        .replace("/*{{SNARK_JS}}*/", snarkJsTemplate)
+        .replace(
+            "{{ZKEY_DATA}}",
+            "data:application/octet-stream;base64," +
+                Buffer.from(zkFile.data as any).toString("base64")
+        )
+        .replace(
+            "{{WASM_URL}}",
+            "data:application/wasm;base64," +
+                Buffer.from(
+                    wasmFs.fs.readFileSync(
+                        `${filePrefix}_js/${filePrefix}.wasm`
+                    ) as Buffer
+                ).toString("base64")
+        )
+}
+
 type Logger = {
     info(str: string): void
     warn(str: string): void
@@ -440,23 +474,10 @@ async function generateGroth16ProvingKey() {
             [filePrefix + ".groth16.zkey"]: zkFile.data,
             [filePrefix + ".groth16.vkey.json"]: vkeyResult,
             [filePrefix + ".groth16.sol"]: solidityProver,
-            [filePrefix + ".html"]: appTemplate
-                .replace("/* {{SNARKJS}} */", snarkJsTemplate)
-                .replace(
-                    "{{ZKEY_DATA}}",
-                    "data:application/octet-stream;base64," +
-                        Buffer.from(zkFile.data as any).toString("base64")
-                )
-                .replace("{{VKEY_DATA}}", vkeyResult)
-                .replace(
-                    "{{WASM_URL}}",
-                    "data:application/wasm;base64," +
-                        Buffer.from(
-                            wasmFs.fs.readFileSync(
-                                `${filePrefix}_js/${filePrefix}.wasm`
-                            ) as Buffer
-                        ).toString("base64")
-                ),
+            [filePrefix + ".groth16.html"]: await generateSnarkTemplate(
+                zkFile,
+                vkeyResult
+            ),
         },
     })
 }
@@ -464,37 +485,37 @@ async function generateGroth16ProvingKey() {
 async function fetchPot(nConstraints: number) {
     const pots = [
         {
-            url: "https://cloudflare-ipfs.com/ipfs/bafybeierwc3pmc2id2zfpgb42njkzvvvj4s333dcq4gr5ri2ixa6vuxi6a",
+            url: "https://bafybeiazktpgt2ima2wfaw6iqgl34o2l5jddy4e3doptcyrd2prsob4emu.ipfs.dweb.link/powersOfTau28_hez_final_11.ptau",
             name: "powersOfTau28_hez_final_11.ptau",
             maxConstraints: 1 << 11,
             size: 2442392,
         },
         {
-            url: "https://cloudflare-ipfs.com/ipfs/bafybeibyoizq4sfp7sfomoofgczak3lgispbvviljjgdpchsxjrb4p6qsi",
+            url: "https://bafybeicjy5sx3rxl46qudsfqfa3d6tcbbtzcg3ky5xioj6ni7wrmab74we.ipfs.dweb.link/powersOfTau28_hez_final_12.ptau",
             name: "powersOfTau28_hez_final_12.ptau",
             maxConstraints: 1 << 12,
             size: 4801688,
         },
         {
-            url: "https://cloudflare-ipfs.com/ipfs/bafybeiderqjodw2mc6m5fqnc7edsun5eu4niupyw3cdsiruospa66y5vam",
+            url: "https://bafybeihxscoclwj7bklijpc7lsu5bwfv7av3qvtbzamlf3ovkki3pzqlpa.ipfs.dweb.link/powersOfTau28_hez_final_13.ptau",
             name: "powersOfTau28_hez_final_13.ptau",
             maxConstraints: 1 << 13,
             size: 9520280,
         },
         {
-            url: "https://cloudflare-ipfs.com/ipfs/bafybeihuh2cuustfaraum3txs2scrl5vaukkc6u5ztf27jlyx5xhtsz5ti",
+            url: "https://bafybeigizi7cwad4bvvcgbzflua5qwxqh223zeexokh7xurhycgjkv6sga.ipfs.dweb.link/powersOfTau28_hez_final_14.ptau",
             name: "powersOfTau28_hez_final_14.ptau",
             maxConstraints: 1 << 14,
             size: 18957464,
         },
         {
-            url: "https://dweb.link/ipfs/bafybeihfv3pmjkfmefpwdxwmxxqtsax4ljshnhl3qai4v62q5r2wszix34",
+            url: "https://bafybeihi5cez3vyfhuuloytld7vdvsdizvbih7x3aa553son7fjvfb6kru.ipfs.dweb.link/powersOfTau28_hez_final_15.ptau",
             name: "powersOfTau28_hez_final_15.ptau",
             maxConstraints: 1 << 15,
             size: 37831832,
         },
         {
-            url: "https://cloudflare-ipfs.com/ipfs/bafybeiajy6lpqym5fvszu4klbzoqzljwhv4ocxvqmwvlwrg6pd6rieggd4",
+            url: "https://bafybeifkc4fasai6londgxwrkrrcdooptnn6227lckkawx2euoxusfutoe.ipfs.dweb.link/powersOfTau28_hez_final_16.ptau",
             name: "powersOfTau28_hez_final_16.ptau",
             maxConstraints: 1 << 16,
             size: 75580568,

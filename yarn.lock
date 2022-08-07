@@ -545,30 +545,10 @@ fastfile@0.0.19:
   resolved "https://registry.yarnpkg.com/fastfile/-/fastfile-0.0.19.tgz#02cef9ade123b0a74adb794f4a1abcfa5719fd46"
   integrity sha512-tz9nWR5KYb6eR2odFQ7oxqEkx8F3YQZ6NBJoJR92YEG3DqYOqyxMck8PKvTVNKx3uwvOqGnLXNScnqpdHRdHGQ==
 
-ffjavascript@0.2.48:
+ffjavascript@0.2.48, ffjavascript@0.2.54, ffjavascript@^0.2.48:
   version "0.2.48"
   resolved "https://registry.yarnpkg.com/ffjavascript/-/ffjavascript-0.2.48.tgz#0ca408471d7b18bfc096a9631aa3ef3549c8c82b"
   integrity sha512-uNrWP+odLofNmmO+iCCPi/Xt/sJh1ku3pVKmKWVWCLFfdCP69hvRrogKUIGnsdiINcWn0lGxcEh5oEjStMFXQQ==
-  dependencies:
-    big-integer "^1.6.48"
-    wasmbuilder "^0.0.12"
-    wasmcurves "0.1.0"
-    web-worker "^1.2.0"
-
-ffjavascript@0.2.54:
-  version "0.2.54"
-  resolved "https://registry.yarnpkg.com/ffjavascript/-/ffjavascript-0.2.54.tgz#b81a3a84dc140566dd2bca832a78d8be29e9e4ce"
-  integrity sha512-VeQmR805zaDxLALu/0FlO0OfmE3MOHvPEmEPUdlinRk7kBydgdthSQSSaHZ/OlZ1DwiiGvfiKmNgNpUq4zr+XQ==
-  dependencies:
-    big-integer "^1.6.48"
-    wasmbuilder "^0.0.12"
-    wasmcurves "0.1.0"
-    web-worker "^1.2.0"
-
-ffjavascript@^0.2.48:
-  version "0.2.55"
-  resolved "https://registry.yarnpkg.com/ffjavascript/-/ffjavascript-0.2.55.tgz#fb4bc53265501526a2916d6a20bbbc06d113d7be"
-  integrity sha512-8X0FCIPOWiK6DTWh3pnE3O6D6nIQsirStAXpWMzRDnoDX7SEnDX4I28aVhwjL7L35XS1vy2AU7zc0UCGYxdLjw==
   dependencies:
     big-integer "^1.6.48"
     wasmbuilder "^0.0.12"

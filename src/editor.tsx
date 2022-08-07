@@ -612,6 +612,7 @@ export default function App() {
                         !running && workerRef.current && (
                             <div>
                                 <div className="label">Keys: </div>
+
                                 <div className="phase2">
                                     <input
                                         type="file"
@@ -640,6 +641,7 @@ export default function App() {
                                         onClick={() => {
                                             workerRef.current!.postMessage({
                                                 type: "groth16",
+                                                url: location.href,
                                                 // code: editor.getValue(),
                                             })
                                             setRunning(Math.random())
@@ -651,6 +653,7 @@ export default function App() {
                                         onClick={() => {
                                             workerRef.current!.postMessage({
                                                 type: "plonk",
+                                                url: location.href,
                                                 // code: editor.getValue(),
                                             })
                                             setRunning(Math.random())
@@ -668,6 +671,16 @@ export default function App() {
                                         Verify
                                     </button>
                                 </div>
+                                <code>
+                                    Click "Groth16" or "PLONK" to generate
+                                    prover and verifier keys for development, as
+                                    well as solidity code, and a sample web
+                                    application.
+                                </code>
+                                <code>
+                                    Click "Verify" and upload a ZKey to check
+                                    that it matches the source code.
+                                </code>
                             </div>
                         )
                     }

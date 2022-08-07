@@ -18,6 +18,9 @@
     "bugs": {
         "url": "https://github.com/antimatter15/zkrepl/issues"
     },
+    "resolutions": {
+        "ffjavascript": "0.2.48"
+    },
     "homepage": "https://github.com/antimatter15/zkrepl#readme",
     "dependencies": {
         "@iden3/binfileutils": "0.0.10",
