@@ -960,6 +960,12 @@ contract PlonkVerifier {
         #result {
             margin-top: 10px;
         }
+        #inputs {
+            width:  100%;
+        }
+        #inputs textarea, #inputs input {
+            width:  100%;
+        }
     </style>
 </head>
 <body>
@@ -1008,11 +1014,20 @@ contract PlonkVerifier {
             const label = document.createElement("td")
             const field = document.createElement("td")
             label.appendChild(document.createTextNode(key + ":"))
-            const input = document.createElement("input")
-            input.type = "number"
-            input.id = "input_" + key
-            input.value = INPUT_JSON[key]
-            field.appendChild(input)
+
+            if (Array.isArray(INPUT_JSON[key])) {
+                const input = document.createElement("textarea")
+                input.id = "input_" + key
+                input.value = JSON.stringify(INPUT_JSON[key])
+                field.appendChild(input)
+            } else {
+                const input = document.createElement("input")
+                input.type = "number"
+                input.id = "input_" + key
+                input.value = INPUT_JSON[key]
+                field.appendChild(input)
+            }
+
             tr.appendChild(label)
             tr.appendChild(field)
             document.getElementById("inputs").appendChild(tr)
@@ -1020,30 +1035,45 @@ contract PlonkVerifier {
 
         async function calculateProof() {
             document.getElementById("proofbutton").disabled = true
-            const input_obj = {}
-            for (let key in INPUT_JSON) {
-                input_obj[key] = document.getElementById("input_" + key).value
-            }
-            const prover =
-                VKEY_DATA.protocol === "groth16"
-                    ? snarkjs.groth16
-                    : snarkjs.plonk
-            const { proof, publicSignals } = await prover.fullProve(
-                input_obj,
-                WASM_URL,
-                ZKEY_DATA
-            )
+            try {
+                const input_obj = {}
 
-            document.getElementById("proofData").value = JSON.stringify(proof)
-            document.getElementById("publicSignals").value =
-                JSON.stringify(publicSignals)
+                for (let key in INPUT_JSON) {
+                    if (Array.isArray(INPUT_JSON[key])) {
+                        input_obj[key] = JSON.parse(
+                            document.getElementById("input_" + key).value
+                        )
+                    } else {
+                        input_obj[key] = document.getElementById(
+                            "input_" + key
+                        ).value
+                    }
+                }
+                const prover =
+                    VKEY_DATA.protocol === "groth16"
+                        ? snarkjs.groth16
+                        : snarkjs.plonk
+                const { proof, publicSignals } = await prover.fullProve(
+                    input_obj,
+                    WASM_URL,
+                    ZKEY_DATA
+                )
+
+                document.getElementById("proofData").value =
+                    JSON.stringify(proof)
+                document.getElementById("publicSignals").value =
+                    JSON.stringify(publicSignals)
+            } catch (err) {
+                document.getElementById("proofData").value = err
+            }
             document.getElementById("proofbutton").disabled = false
         }
 
         async function verifyProof() {
             document.getElementById("verifybutton").disabled = true
-            document.getElementById("result").innerHTML = "\u231B\uFE0F Checking proof..."
-            await new Promise(resolve => setTimeout(resolve, 50))
+            document.getElementById("result").innerHTML =
+                "\u231B\uFE0F Checking proof..."
+            await new Promise((resolve) => setTimeout(resolve, 50))
             try {
                 const publicSignals = JSON.parse(
                     document.getElementById("publicSignals").value
