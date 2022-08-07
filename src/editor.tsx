@@ -611,7 +611,9 @@ export default function App() {
                         //     !messages.some((k) => k.type === "verified") &&
                         !running && workerRef.current && (
                             <div>
-                                <div className="label">Keys: </div>
+                                <div className="label">
+                                    Keys + Solidity + HTML:{" "}
+                                </div>
 
                                 <div className="phase2">
                                     <input
@@ -671,16 +673,6 @@ export default function App() {
                                         Verify
                                     </button>
                                 </div>
-                                <code>
-                                    Click "Groth16" or "PLONK" to generate
-                                    prover and verifier keys for development, as
-                                    well as solidity code, and a sample web
-                                    application.
-                                </code>
-                                <code>
-                                    Click "Verify" and upload a ZKey to check
-                                    that it matches the source code.
-                                </code>
                             </div>
                         )
                     }
