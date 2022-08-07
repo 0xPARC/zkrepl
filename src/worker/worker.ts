@@ -7,11 +7,6 @@ import groth16SolidityVerifierTemplate from "../data/groth16.sol?raw"
 import plonkSolidityVerifierTemplate from "../data/plonk.sol?raw"
 import snarkJsTemplate from "../data/snarkjs.min.js?raw"
 import appTemplate from "../data/demo.html?raw"
-
-// import { buildThreadManager } from "ffjavascript/src/threadman"
-
-// console.log(buildThreadManager)
-// import { newZKey } from "snarkjs"
 import { zKey, plonk } from "snarkjs"
 
 let wtnsFile: Uint8Array
@@ -179,10 +174,12 @@ async function bootWasm(files: File[]) {
     }
 
     // console.log(r1cs)
+    const elapsed = performance.now() - startTime
 
     postMessage({
         type: "Artifacts",
-        text: "",
+        text: `Finished in ${(elapsed / 1000).toFixed(2)}s`,
+        done: true,
         files: Object.fromEntries(
             Object.entries({
                 [`${filePrefix}.wasm`]: wasmData,
@@ -198,13 +195,6 @@ async function bootWasm(files: File[]) {
                     !opts.nosym && wasmFs.fs.readFileSync(`${filePrefix}.sym`),
             }).filter(([key, val]) => val)
         ),
-    })
-
-    const elapsed = performance.now() - startTime
-    postMessage({
-        type: "done",
-        time: elapsed,
-        text: `Finished in ${(elapsed / 1000).toFixed(2)}s`,
     })
 }
 
@@ -279,7 +269,7 @@ onmessage = (e: MessageEvent) => {
 
     if (data.type === "run") {
         bootWasm(data.files).catch((err) => {
-            postMessage({ type: "fail", text: err.message })
+            postMessage({ type: "fail", done: true, text: err.message })
         })
     } else if (data.type === "hover") {
         handleHover(data.symbol).catch((err) => {
@@ -289,16 +279,16 @@ onmessage = (e: MessageEvent) => {
     } else if (data.type === "groth16") {
         zkreplURL = data.url
         generateGroth16ProvingKey().catch((err) => {
-            postMessage({ type: "fail", text: err.message })
+            postMessage({ type: "fail", done: true, text: err.message })
         })
     } else if (data.type === "plonk") {
         zkreplURL = data.url
         generatePLONKProvingKey().catch((err) => {
-            postMessage({ type: "fail", text: err.message })
+            postMessage({ type: "fail", done: true, text: err.message })
         })
     } else if (data.type === "verify") {
         verifyZKey(data.data).catch((err) => {
-            postMessage({ type: "fail", text: err.message })
+            postMessage({ type: "fail", done: true, text: err.message })
         })
     }
 }
@@ -321,6 +311,8 @@ async function verifyZKey(zKeyData: ArrayBuffer) {
     // clear our log
     while (zKeyLog.pop()) {}
 
+    console.log("circuitHash", circuitHash)
+
     const result = await zKey.verifyFromInit(
         initFileName,
         ptauArray,
@@ -332,6 +324,7 @@ async function verifyZKey(zKeyData: ArrayBuffer) {
 
     postMessage({
         type: "verified",
+        done: true,
         text: result
             ? `✅ Successfully verified zkey matches circuit`
             : "❌ Circuit does not match zkey",
@@ -375,7 +368,8 @@ async function generatePLONKProvingKey() {
         plonk: plonkSolidityVerifierTemplate,
     })
     postMessage({
-        type: "keys",
+        type: "plonk keys",
+        done: true,
         files: {
             [filePrefix + ".plonk.zkey"]: zkFile.data,
             [filePrefix + ".plonk.vkey.json"]: vkeyResult,
@@ -469,7 +463,8 @@ async function generateGroth16ProvingKey() {
 
     const wasmFs = await wasmFsPromise
     postMessage({
-        type: "keys",
+        type: "groth16 keys",
+        done: true,
         files: {
             [filePrefix + ".groth16.zkey"]: zkFile.data,
             [filePrefix + ".groth16.vkey.json"]: vkeyResult,

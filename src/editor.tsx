@@ -103,16 +103,7 @@ export default function App() {
             circomWorker = workerRef.current
             workerRef.current.onmessage = (e: MessageEvent) => {
                 const data = e.data
-                if (data.type === "fail") {
-                    setRunning(false)
-                    workerRef.current!.running = false
-                } else if (data.type === "done") {
-                    setRunning(false)
-                    workerRef.current!.running = false
-                } else if (data.type === "keys") {
-                    setRunning(false)
-                    workerRef.current!.running = false
-                } else if (data.type === "verified") {
+                if (data.done) {
                     setRunning(false)
                     workerRef.current!.running = false
                 } else if (data.type === "hover") {
@@ -551,10 +542,11 @@ export default function App() {
                     {messages.map((m, i) => (
                         <div key={i} className="message">
                             <div className="label">{m.type}: </div>
-                            {m.type === "keys" && (
+                            {m.type === "groth16 keys" && (
                                 <div className="insecure">
                                     WARNING: These keys are strictly for testing
-                                    purposes, and are generated insecurely!
+                                    purposes, and are generated without a proper
+                                    trusted setup!
                                 </div>
                             )}
                             {m.url ? (
@@ -648,6 +640,13 @@ export default function App() {
                                             })
                                             setRunning(Math.random())
                                         }}
+                                        title={
+                                            "Click here to generate Groth16 prover and verifier keys," +
+                                            " as well as a solidity verifier contract, and a sample interactive" +
+                                            " SnarkJS web application. Note that the Groth16 proving system " +
+                                            "requires a per-circuit trusted setup, and this implementation only" +
+                                            " adds a single contribution which is insufficient for production. "
+                                        }
                                     >
                                         Groth16
                                     </button>
@@ -660,10 +659,19 @@ export default function App() {
                                             })
                                             setRunning(Math.random())
                                         }}
+                                        title={
+                                            "Click here to generate PLONK prover and verifier keys," +
+                                            " as well as a solidity verifier contract, and a sample interactive" +
+                                            " SnarkJS web application."
+                                        }
                                     >
                                         PLONK
                                     </button>
                                     <button
+                                        title={
+                                            "Upload a ZKey here to check that it is compiled from the same " +
+                                            "source code as this current zkREPL."
+                                        }
                                         onClick={() => {
                                             document
                                                 .getElementById("zkey_upload")!
