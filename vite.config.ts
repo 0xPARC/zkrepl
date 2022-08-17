@@ -7,6 +7,7 @@ export default defineConfig({
             "web-worker": "./src/worker/buffer.ts",
             readline: "./src/worker/buffer.ts",
             crypto: "./src/worker/crypto.ts",
+            constants: "./src/worker/constants.ts",
             // fs: "./src/worker/filesystem.ts",
         },
     },
