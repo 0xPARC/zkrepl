@@ -1,43 +1,74 @@
 export default async function builder(
     code: BufferSource,
     options: {
-        log: (value: bigint, label?: string) => void
+        log: (value: bigint) => void
     }
 ) {
     options = options || {}
 
-    const wasmModule = await WebAssembly.compile(code)
+    let wasmModule
+    try {
+        wasmModule = await WebAssembly.compile(code)
+    } catch (err) {
+        options.log(err)
+        options.log(
+            "\nTry to run circom --c in order to generate c++ code instead\n"
+        )
+        throw new Error(err)
+    }
 
     let wc
 
-    const instance = (await WebAssembly.instantiate(wasmModule, {
+    let errStr = ""
+    let msgStr = ""
+
+    const instance = await WebAssembly.instantiate(wasmModule, {
         runtime: {
-            exceptionHandler: function (code: number) {
-                let errStr
+            exceptionHandler: function (code) {
+                let err
                 if (code == 1) {
-                    errStr = "Signal not found. "
+                    err = "Signal not found.\n"
                 } else if (code == 2) {
-                    errStr = "Too many signals set. "
+                    err = "Too many signals set.\n"
                 } else if (code == 3) {
-                    errStr = "Signal already set. "
+                    err = "Signal already set.\n"
                 } else if (code == 4) {
-                    errStr = "Assert Failed. "
+                    err = "Assert Failed.\n"
                 } else if (code == 5) {
-                    errStr = "Not enough memory. "
+                    err = "Not enough memory.\n"
+                } else if (code == 6) {
+                    err = "Input signal array access exceeds the size.\n"
                 } else {
-                    errStr = "Unknown error\n"
+                    err = "Unknown error.\n"
                 }
-                // get error message from wasm
-                errStr += getMessage()
-                throw new Error(errStr)
+                throw new Error(err + errStr)
+            },
+            printErrorMessage: function () {
+                errStr += getMessage() + "\n"
+                // console.error(getMessage());
+            },
+            writeBufferMessage: function () {
+                const msg = getMessage()
+                // Any calls to `log()` will always end with a `\n`, so that's when we print and reset
+                if (msg === "\n") {
+                    options.log(msgStr)
+                    msgStr = ""
+                } else {
+                    // If we've buffered other content, put a space in between the items
+                    if (msgStr !== "") {
+                        msgStr += " "
+                    }
+                    // Then append the message to the message we are creating
+                    msgStr += msg
+                }
             },
             showSharedRWMemory: function () {
                 printSharedRWMemory()
             },
         },
-    })) as WitnessWasmInstance
+    })
 
-    const sanityCheck = true
+    const sanityCheck = options
     //        options &&
     //        (
     //            options.sanityCheck ||
@@ -48,7 +79,6 @@ export default async function builder(
     //        );
 
     wc = new WitnessCalculator(instance, sanityCheck)
-
     return wc
 
     function getMessage() {
@@ -68,47 +98,25 @@ export default async function builder(
             arr[shared_rw_memory_size - 1 - j] =
                 instance.exports.readSharedRWMemory(j)
         }
-        const label = getMessage()
-        options.log(fromArray32(arr), label)
+
+        // If we've buffered other content, put a space in between the items
+        if (msgStr !== "") {
+            msgStr += " "
+        }
+        // Then append the value to the message we are creating
+        msgStr += fromArray32(arr).toString()
     }
 }
-
-type WitnessWasmInstance = WebAssembly.Instance & {
-    exports: {
-        getVersion: () => number
-        getFieldNumLen32: () => number
-        getWitnessSize: () => number
-        getRawPrime: () => void
-        getMessageChar: () => number
-        writeSharedRWMemory: (i: number, v: number) => void
-        readSharedRWMemory: (i: number) => number
-        setInputSignal: (hMSB: number, hLSB: number, i: number) => void
-        getWitness: (i: number) => void
-        getSignal: (i: number) => void
-        getInputSize: () => number
-        init: (sanityCheck: number) => void
-    }
-}
-
-type Input = Record<string, any>
 
 class WitnessCalculator {
-    instance: WitnessWasmInstance
-    version: number
-    n32: number
-    witnessSize: number
-    prime: bigint
-
-    sanityCheck: boolean
-
-    constructor(instance: WebAssembly.Instance, sanityCheck: boolean) {
-        this.instance = instance as any
+    constructor(instance, sanityCheck) {
+        this.instance = instance
 
         this.version = this.instance.exports.getVersion()
         this.n32 = this.instance.exports.getFieldNumLen32()
 
         this.instance.exports.getRawPrime()
-        const arr = new Array(this.n32)
+        const arr = new Uint32Array(this.n32)
         for (let i = 0; i < this.n32; i++) {
             arr[this.n32 - 1 - i] = this.instance.exports.readSharedRWMemory(i)
         }
@@ -123,7 +131,7 @@ class WitnessCalculator {
         return this.instance.exports.getVersion()
     }
 
-    async _doCalculateWitness(input: Input, sanityCheck: boolean) {
+    async _doCalculateWitness(input, sanityCheck) {
         //input is assumed to be a map from signals to arrays of bigints
         this.instance.exports.init(this.sanityCheck || sanityCheck ? 1 : 0)
         const keys = Object.keys(input)
@@ -133,8 +141,21 @@ class WitnessCalculator {
             const hMSB = parseInt(h.slice(0, 8), 16)
             const hLSB = parseInt(h.slice(8, 16), 16)
             const fArr = flatArray(input[k])
+            let signalSize = this.instance.exports.getInputSignalSize(
+                hMSB,
+                hLSB
+            )
+            if (signalSize < 0) {
+                throw new Error(`Signal ${k} not found\n`)
+            }
+            if (fArr.length < signalSize) {
+                throw new Error(`Not enough values for input signal ${k}\n`)
+            }
+            if (fArr.length > signalSize) {
+                throw new Error(`Too many values for input signal ${k}\n`)
+            }
             for (let i = 0; i < fArr.length; i++) {
-                const arrFr = toArray32(fArr[i], this.n32)
+                const arrFr = toArray32(BigInt(fArr[i]) % this.prime, this.n32)
                 for (let j = 0; j < this.n32; j++) {
                     this.instance.exports.writeSharedRWMemory(
                         j,
@@ -144,14 +165,9 @@ class WitnessCalculator {
                 try {
                     this.instance.exports.setInputSignal(hMSB, hLSB, i)
                     input_counter++
-                } catch (err: any) {
-                    // console.log(`After adding signal ${i} of ${k}`)
-                    // throw new Error(err)
-                    if (err.message.includes("Signal not found.")) {
-                        throw new Error(`Unexpected input signal "${k}".`)
-                    } else {
-                        throw new Error(err)
-                    }
+                } catch (err) {
+                    // options.log(`After adding signal ${i} of ${k}`)
+                    throw new Error(err)
                 }
             }
         })
@@ -162,7 +178,7 @@ class WitnessCalculator {
         }
     }
 
-    async calculateWitness(input: Input, sanityCheck: boolean) {
+    async calculateWitness(input, sanityCheck) {
         const w = []
 
         await this._doCalculateWitness(input, sanityCheck)
@@ -180,7 +196,7 @@ class WitnessCalculator {
         return w
     }
 
-    async calculateBinWitness(input: Input, sanityCheck: boolean) {
+    async calculateBinWitness(input, sanityCheck) {
         const buff32 = new Uint32Array(this.witnessSize * this.n32)
         const buff = new Uint8Array(buff32.buffer)
         await this._doCalculateWitness(input, sanityCheck)
@@ -192,10 +208,11 @@ class WitnessCalculator {
                 buff32[pos + j] = this.instance.exports.readSharedRWMemory(j)
             }
         }
+
         return buff
     }
 
-    async calculateWTNSBin(input: Input, sanityCheck: boolean) {
+    async calculateWTNSBin(input, sanityCheck) {
         const buff32 = new Uint32Array(
             this.witnessSize * this.n32 + this.n32 + 11
         )
@@ -263,9 +280,8 @@ class WitnessCalculator {
     }
 }
 
-function toArray32(s: number, size: number) {
+function toArray32(rem, size) {
     const res = [] //new Uint32Array(size); //has no unshift
-    let rem = BigInt(s)
     const radix = BigInt(0x100000000)
     while (rem) {
         res.unshift(Number(rem % radix))
@@ -281,7 +297,7 @@ function toArray32(s: number, size: number) {
     return res
 }
 
-function fromArray32(arr: Uint32Array | number[]) {
+function fromArray32(arr) {
     //returns a BigInt
     var res = BigInt(0)
     const radix = BigInt(0x100000000)
@@ -291,12 +307,12 @@ function fromArray32(arr: Uint32Array | number[]) {
     return res
 }
 
-function flatArray(a: number[]) {
-    var res: number[] = []
+function flatArray(a) {
+    var res = []
     fillArray(res, a)
     return res
 
-    function fillArray(res: number[], a: number[] | any[]) {
+    function fillArray(res, a) {
         if (Array.isArray(a)) {
             for (let i = 0; i < a.length; i++) {
                 fillArray(res, a[i])
@@ -307,11 +323,11 @@ function flatArray(a: number[]) {
     }
 }
 
-function fnvHash(str: string) {
+function fnvHash(str) {
     const uint64_max = BigInt(2) ** BigInt(64)
     let hash = BigInt("0xCBF29CE484222325")
     for (var i = 0; i < str.length; i++) {
-        hash ^= BigInt(str[i].charCodeAt(0))
+        hash ^= BigInt(str[i].charCodeAt())
         hash *= BigInt(0x100000001b3)
         hash %= uint64_max
     }
