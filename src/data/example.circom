@@ -8,8 +8,8 @@ template Example () {
     signal input b;
     signal output c;
     
+    var unused = 4;
     c <== a * b;
-
     assert(a > 2);
     
     component hash = Poseidon(2);
