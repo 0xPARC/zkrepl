@@ -116,7 +116,7 @@ export default function App() {
                     return
                 } else if (data.type === "sarif") {
                     const sarif: Log = data.result
-
+                    console.log("sarif", sarif)
                     for (let model of modelsRef.current) {
                         const markers: monaco.editor.IMarkerData[] = []
 
@@ -130,7 +130,7 @@ export default function App() {
                                 )
                                     continue
                                 markers.push({
-                                    message: result.message.text!,
+                                    message: loc.message?.text!,
                                     severity:
                                         result.level == "warning"
                                             ? monaco.MarkerSeverity.Warning
