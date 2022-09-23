@@ -57,6 +57,7 @@ import "./syntax"
 import codeExample from "./data/example.circom?raw"
 import CircomWorker from "./worker/worker?worker"
 import Ansi from "ansi-to-react"
+import * as _ from "lodash"
 
 import * as monaco from "monaco-editor/esm/vs/editor/editor.api"
 
@@ -64,7 +65,7 @@ import * as monaco from "monaco-editor/esm/vs/editor/editor.api"
 // importing raw urls from webworkers in production builds
 import wasmURL from "circom2/circom.wasm?url"
 import circomLib from "./data/circomlib.zip?url"
-
+import type { Log } from "sarif"
 import { replyHover } from "./syntax"
 console.log(circomLib, wasmURL)
 
@@ -112,6 +113,50 @@ export default function App() {
                     console.log(data.text)
                 } else if (data.type === "progress") {
                     setProgress(data.fraction)
+                    return
+                } else if (data.type === "sarif") {
+                    const sarif: Log = data.result
+
+                    for (let model of modelsRef.current) {
+                        const markers: monaco.editor.IMarkerData[] = []
+
+                        for (let result of sarif.runs[0].results!) {
+                            for (let loc of result.locations!) {
+                                if (
+                                    loc.physicalLocation?.artifactLocation?.uri?.replace(
+                                        "file:/",
+                                        ""
+                                    ) !== model.uri.path
+                                )
+                                    continue
+                                markers.push({
+                                    message: result.message.text!,
+                                    severity:
+                                        result.level == "warning"
+                                            ? monaco.MarkerSeverity.Warning
+                                            : result.level == "note"
+                                            ? monaco.MarkerSeverity.Info
+                                            : monaco.MarkerSeverity.Error,
+                                    startLineNumber:
+                                        loc.physicalLocation?.region
+                                            ?.startLine!,
+                                    startColumn:
+                                        loc.physicalLocation?.region
+                                            ?.startColumn!,
+                                    endLineNumber:
+                                        loc.physicalLocation?.region?.endLine!,
+                                    endColumn:
+                                        loc.physicalLocation?.region
+                                            ?.endColumn!,
+                                })
+                            }
+                        }
+
+                        monaco.editor.setModelMarkers(model, "owner", markers)
+                    }
+
+                    // const model = editor?.getModel()!
+
                     return
                 }
                 setMessages((k) => [...k, data])
@@ -272,6 +317,17 @@ export default function App() {
                 }
             })
 
+            const onChanged = _.debounce(() => {
+                // console.log("hello")
+                workerRef.current!.postMessage({
+                    type: "analyze",
+                    files: modelsToFiles(modelsRef.current),
+                })
+            }, 1000)
+            editor.onDidChangeModelContent((change) => {
+                // console.log("chaend", change)
+                onChanged()
+            })
             editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyS, save)
             editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.Enter, run)
             editor.addCommand(monaco.KeyMod.Shift | monaco.KeyCode.Enter, run)

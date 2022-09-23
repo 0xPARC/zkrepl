@@ -12,7 +12,8 @@ import { WasmFs } from "@wasmer/wasmfs"
 import { unzip } from "unzipit"
 
 import circomLib from "../data/circomlib.zip?url"
-import wasmURL from "circom2/circom.wasm?url"
+import circomWasmURL from "circom2/circom.wasm?url"
+import circomspectWasmURL from "circomspect/circomspect.wasm?url"
 
 const baseNow = Math.floor((Date.now() - performance.now()) * 1e-3)
 
@@ -95,14 +96,7 @@ export function replaceExternalIncludes(code: string) {
     })
 }
 
-export async function runCircom(
-    fileName: string = "main.circom",
-    options = {
-        nosym: false,
-        nowasm: false,
-        nor1cs: false,
-    }
-) {
+async function createFsBindings() {
     const wasmFs = await wasmFsPromise
 
     let bufferSize = 10 * 1024 * 1024
@@ -184,10 +178,87 @@ export async function runCircom(
                 return wasmFs.fs.closeSync(fd)
             }
         },
-    }
+    } as any
 
-    const wasm = await loadWasm(wasmURL)
-    while (true) {
+    return async (fn: (fsBindings: any) => Promise<void>) => {
+        while (true) {
+            fetchExternalResource = undefined
+            fsBindings.writeFileSync("/dev/stderr", "")
+            fsBindings.writeFileSync("/dev/stdout", "")
+            await fn(fsBindings)
+            fsBindings.closeSync(-1)
+            if (fetchExternalResource) {
+                console.log("Fetching", fetchExternalResource)
+                const res = await fetchResource(fetchExternalResource)
+                const code = replaceExternalIncludes(removeMainComponent(res))
+
+                fsBindings.mkdirSync(path.dirname(fetchExternalResource), {
+                    recursive: true,
+                })
+                fsBindings.writeFileSync(fetchExternalResource, code)
+                continue
+            }
+
+            break
+        }
+    }
+}
+
+export async function runCircomspect(fileName = "main.circom") {
+    const runLoop = await createFsBindings()
+
+    const wasm = await loadWasm(circomspectWasmURL)
+    await runLoop(async (fsBindings) => {
+        let wasi = new WASI({
+            // Arguments passed to the Wasm Module
+            // The first argument is usually the filepath to the executable WASI module
+            // we want to run.
+            args: [
+                "circomspect",
+                fileName,
+                "--sarif-file",
+                "__circomspect.sarif",
+            ] as string[],
+
+            // Environment variables that are accesible to the WASI module
+            env: {
+                RUST_BACKTRACE: "1",
+            },
+            preopens: {
+                ".": ".",
+            },
+            // Bindings that are used by the WASI Instance (fs, path, etc...)
+            bindings: {
+                ...browserBindings,
+                fs: fsBindings,
+            },
+        })
+
+        let instance = await WebAssembly.instantiate(wasm, {
+            ...wasi.getImports(wasm),
+        })
+        console.log("starting circomspect")
+        try {
+            wasi.start(instance) // Start the WASI instance
+        } catch (err) {
+            console.log(err)
+        }
+    })
+}
+
+export async function runCircom(
+    fileName: string = "main.circom",
+    options = {
+        nosym: false,
+        nowasm: false,
+        nor1cs: false,
+    }
+) {
+    const runLoop = await createFsBindings()
+
+    const wasm = await loadWasm(circomWasmURL)
+
+    await runLoop(async (fsBindings) => {
         let wasi = new WASI({
             // Arguments passed to the Wasm Module
             // The first argument is usually the filepath to the executable WASI module
@@ -212,34 +283,9 @@ export async function runCircom(
             // Bindings that are used by the WASI Instance (fs, path, etc...)
             bindings: {
                 ...browserBindings,
-                // path: {
-                //     ...browserBindings.path,
-                //     resolve(base, file) {
-                //         console.log("resolve", base, file)
-                //         return browserBindings.path.resolve(base, file)
-                //     },
-                // },
                 fs: fsBindings,
-                // fs: new Proxy(fsBindings, {
-                //     get(target, prop, rec) {
-                //         if (
-                //             typeof target[prop] === "function" &&
-                //             prop !== "writeSync"
-                //         ) {
-                //             return (...args) => {
-                //                 console.log(prop, args)
-                //                 return target[prop](...args)
-                //             }
-                //         }
-                //         return target[prop]
-                //     },
-                // }),
             },
         })
-        fetchExternalResource = undefined
-
-        wasi.bindings.fs.writeFileSync("/dev/stderr", "")
-        wasi.bindings.fs.writeFileSync("/dev/stdout", "")
 
         let instance = await WebAssembly.instantiate(wasm, {
             ...wasi.getImports(wasm),
@@ -250,21 +296,7 @@ export async function runCircom(
         } catch (err) {
             console.log(err)
         }
-        wasi.bindings.fs.closeSync(-1)
-        if (fetchExternalResource) {
-            console.log("Fetching", fetchExternalResource)
-            const res = await fetchResource(fetchExternalResource)
-            const code = replaceExternalIncludes(removeMainComponent(res))
-
-            wasi.bindings.fs.mkdirSync(path.dirname(fetchExternalResource), {
-                recursive: true,
-            })
-            wasi.bindings.fs.writeFileSync(fetchExternalResource, code)
-            continue
-        }
-
-        break
-    }
+    })
 }
 
 function removeMainComponent(code: string) {

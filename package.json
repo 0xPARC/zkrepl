@@ -24,7 +24,9 @@
     "homepage": "https://github.com/antimatter15/zkrepl#readme",
     "dependencies": {
         "@iden3/binfileutils": "^0.0.11",
+        "@types/lodash": "^4.14.185",
         "@types/node": "^16.11.12",
+        "@types/sarif": "^2.1.4",
         "@wasmer/wasi": "^0.12.0",
         "@wasmer/wasmfs": "^0.12.0",
         "ansi-to-react": "^6.1.6",
@@ -32,6 +34,7 @@
         "buffer": "^6.0.3",
         "buffer-es6": "^4.9.3",
         "circom2": "0.2.6",
+        "circomspect": "^0.0.5",
         "ffjavascript": "^0.2.56",
         "monaco-editor": "^0.30.1",
         "patch-package": "^6.4.7",

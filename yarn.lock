@@ -42,6 +42,11 @@
   resolved "https://registry.yarnpkg.com/@types/chai/-/chai-4.3.3.tgz#3c90752792660c4b562ad73b3fbd68bf3bc7ae07"
   integrity sha512-hC7OMnszpxhZPduX+m+nrx+uFoLkWOMiR4oa/AZF3MuSETYTZmFfJAHqZEM8MVlvfG7BEUcgvtwoCTxBp6hm3g==
 
+"@types/lodash@^4.14.185":
+  version "4.14.185"
+  resolved "https://registry.yarnpkg.com/@types/lodash/-/lodash-4.14.185.tgz#c9843f5a40703a8f5edfd53358a58ae729816908"
+  integrity sha512-evMDG1bC4rgQg4ku9tKpuMh5iBNEwNa3tf9zRHdP1qlv+1WUg44xat4IxCE14gIpZRGUUWAx2VhItCZc25NfMA==
+
 "@types/node@*":
   version "18.7.6"
   resolved "https://registry.yarnpkg.com/@types/node/-/node-18.7.6.tgz#31743bc5772b6ac223845e18c3fc26f042713c83"
@@ -86,6 +91,11 @@
     "@types/prop-types" "*"
     "@types/scheduler" "*"
     csstype "^3.0.2"
+
+"@types/sarif@^2.1.4":
+  version "2.1.4"
+  resolved "https://registry.yarnpkg.com/@types/sarif/-/sarif-2.1.4.tgz#471c5788199d22f572f255de9a8166a30abf1245"
+  integrity sha512-4xKHMdg3foh3Va1fxTzY1qt8QVqmaJpGWsVvtjQrJBn+/bkig2pWFKJ4FPI2yLI4PAj0SUKiPO4Vd7ggYIMZjQ==
 
 "@types/scheduler@*":
   version "0.16.2"
@@ -392,6 +402,14 @@ circom_runtime@0.1.20:
   integrity sha512-61AnccA8Ozo5apyDf3hR1JMDDNx1DttKll2bdxVpNjUaTiawDuuYE0VNmRvuoKlcy/WAY+HtD3K994WGrOFhJQ==
   dependencies:
     ffjavascript "0.2.55"
+
+circomspect@^0.0.5:
+  version "0.0.5"
+  resolved "https://registry.yarnpkg.com/circomspect/-/circomspect-0.0.5.tgz#9696a6ca4afed479cbfe29691f8146f211693879"
+  integrity sha512-MfU6hS2hgIGm1RT+mhYW+2dbGGy8+lE3+Q7Y5RfwUas4Lf2Ul0Ix4iZ9/3F8ieeAH4M7rS2Kz9G+sd4zCh8Vdw==
+  dependencies:
+    "@wasmer/wasi" "^0.12.0"
+    path-browserify "^1.0.1"
 
 color-convert@^1.9.0:
   version "1.9.3"

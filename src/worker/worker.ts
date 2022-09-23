@@ -1,7 +1,12 @@
 import witnessBuilder from "./witness"
-import { replaceExternalIncludes, runCircom, wasmFsPromise } from "./wasi"
+import {
+    replaceExternalIncludes,
+    runCircom,
+    runCircomspect,
+    wasmFsPromise,
+} from "./wasi"
 import * as binFileUtils from "@iden3/binfileutils"
-import { readR1csHeader } from "r1csfile"
+import { R1CSHeader, readR1csHeader } from "r1csfile"
 import { Scalar } from "ffjavascript"
 import groth16SolidityVerifierTemplate from "../data/groth16.sol?raw"
 import plonkSolidityVerifierTemplate from "../data/plonk.sol?raw"
@@ -20,9 +25,8 @@ type File = {
     active: boolean
 }
 
-async function bootWasm(files: File[]) {
+async function initFs(files: File[]) {
     const wasmFs = await wasmFsPromise
-    const startTime = performance.now()
 
     for (var file of files) {
         wasmFs.fs.writeFileSync(file.name, replaceExternalIncludes(file.value))
@@ -34,17 +38,26 @@ async function bootWasm(files: File[]) {
         files.find((x) => x.name === "main.circom")?.name ||
         files.find((x) => x.value.includes("component main"))?.name ||
         "main.circom"
-    // const fileName = 'main.circom'
+
     filePrefix = fileName.replace(/\..*$/, "")
     const mainCode = files.find((x) => x.name === fileName)!.value
+
+    return { mainCode, wasmFs, fileName }
+}
+
+async function bootWasm(files: File[]) {
+    const startTime = performance.now()
+    const { mainCode, wasmFs, fileName } = await initFs(files)
     const zkreplFlags = /\/\/\s*zkrepl:\s*(.*)/i.exec(mainCode)
     const flags = zkreplFlags ? zkreplFlags[1].split(/[\s,]+/) : []
+
     const opts = {
         nowasm: flags.includes("nowasm"),
         nor1cs: flags.includes("nor1cs"),
         nosym: flags.includes("nosym"),
         nowtns: flags.includes("nowtns"),
     }
+
     await runCircom(fileName, opts)
 
     const stderr = wasmFs.fs.readFileSync("/dev/stderr", "utf8")
@@ -264,9 +277,15 @@ onmessage = (e: MessageEvent) => {
     const data = e.data
 
     if (data.type === "run") {
-        bootWasm(data.files).catch((err) => {
-            postMessage({ type: "fail", done: true, text: err.message })
-        })
+        bootWasm(data.files)
+            .catch((err) => {
+                postMessage({ type: "fail", done: true, text: err.message })
+            })
+            .then(() => {
+                analyzeCircom(data.files).catch((err) => {
+                    console.error(err)
+                })
+            })
     } else if (data.type === "hover") {
         handleHover(data.symbol).catch((err) => {
             console.log("hover err", err)
@@ -286,7 +305,25 @@ onmessage = (e: MessageEvent) => {
         verifyZKey(data.data).catch((err) => {
             postMessage({ type: "fail", done: true, text: err.message })
         })
+    } else if (data.type === "analyze") {
+        analyzeCircom(data.files).catch((err) => {
+            console.error(err)
+        })
     }
+}
+
+async function analyzeCircom(files: File[]) {
+    const { mainCode, wasmFs, fileName } = await initFs(files)
+
+    console.time("start circomspect")
+    await runCircomspect(fileName)
+    postMessage({
+        type: "sarif",
+        result: JSON.parse(
+            wasmFs.fs.readFileSync("__circomspect.sarif", "utf8") as string
+        ),
+    })
+    console.timeEnd("start circomspect")
 }
 
 async function verifyZKey(zKeyData: ArrayBuffer) {
@@ -344,12 +381,14 @@ async function getR1CS() {
     return { r1cs, r1csFile }
 }
 
+function circomSize(r1cs: R1CSHeader) {
+    return 4 * 3 * r1cs.nConstraints + r1cs.nPubInputs + r1cs.nOutputs
+}
+
 async function generatePLONKProvingKey() {
     const { r1cs, r1csFile } = await getR1CS()
     // TODO: be better at estimating pTau size?
-    const ptauArray = await fetchPot(
-        4 * 3 * r1cs.nConstraints + r1cs.nPubInputs + r1cs.nOutputs
-    )
+    const ptauArray = await fetchPot(circomSize(r1cs))
 
     const zkFile = { type: "mem", data: null }
     const [logger, zKeyLog] = createLogger()
@@ -378,7 +417,10 @@ async function generatePLONKProvingKey() {
     })
 }
 
-async function generateSnarkTemplate(zkFile, vkeyResult) {
+async function generateSnarkTemplate(
+    zkFile: { data: any },
+    vkeyResult: string
+) {
     const wasmFs = await wasmFsPromise
 
     return appTemplate
