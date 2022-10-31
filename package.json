@@ -33,7 +33,7 @@
         "blake2b-wasm": "^2.4.0",
         "buffer": "^6.0.3",
         "buffer-es6": "^4.9.3",
-        "circom2": "0.2.6",
+        "circom2": "^0.2.10",
         "circomspect": "^0.0.5",
         "ffjavascript": "^0.2.56",
         "monaco-editor": "^0.30.1",
@@ -51,7 +51,7 @@
         "@types/react-dom": "^18.0.2",
         "gh-pages": "^3.2.3",
         "less": "^4.1.2",
-        "vite": "2.7",
+        "vite": "^3.2.2",
         "vitest": "^0.22.0"
     }
 }

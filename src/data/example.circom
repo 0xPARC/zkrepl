@@ -1,4 +1,4 @@
-pragma circom 2.0.8;
+pragma circom 2.1.0;
 
 include "circomlib/poseidon.circom";
 // include "https://github.com/0xPARC/circom-secp256k1/blob/master/circuits/bigint.circom";
