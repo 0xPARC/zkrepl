@@ -11,3 +11,11 @@ if (import.meta.env.PROD && typeof document === "undefined") {
 		},
 	})
 }
+
+// Object.assign(globalThis, {
+// 		process: {
+// 			currentScript: {
+// 				src: self.location.href,
+// 			},
+// 		},
+// 	})

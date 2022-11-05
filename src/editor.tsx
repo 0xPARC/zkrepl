@@ -198,7 +198,7 @@ export default function App() {
             if (key === "about_zkrepl.md") continue
             const model = monaco.editor.createModel(
                 data?.files[key].content || "// Unable to load gist",
-                "circom",
+                key.endsWith(".nr") ? "noir" : "circom",
                 new monaco.Uri().with({ path: key })
             )
             tmpModels.push(model)
@@ -482,7 +482,9 @@ export default function App() {
                                             const model =
                                                 monaco.editor.createModel(
                                                     file.getValue(),
-                                                    "circom",
+                                                    fileName.endsWith(".nr")
+                                                        ? "noir"
+                                                        : "circom",
                                                     new monaco.Uri().with({
                                                         path: fileName,
                                                     })
@@ -532,7 +534,7 @@ export default function App() {
                             }
                             const model = monaco.editor.createModel(
                                 codeExample,
-                                "circom",
+                                fileName.endsWith(".nr") ? "noir" : "circom",
                                 new monaco.Uri().with({
                                     path: fileName,
                                 })
@@ -658,7 +660,7 @@ export default function App() {
                         // messages.some((k) => k.type === "done") &&
                         //     !messages.some((k) => k.type === "keys") &&
                         //     !messages.some((k) => k.type === "verified") &&
-                        !running && workerRef.current && (
+                        false && !running && workerRef.current && (
                             <div>
                                 <div className="label">
                                     Keys + Solidity + HTML:{" "}

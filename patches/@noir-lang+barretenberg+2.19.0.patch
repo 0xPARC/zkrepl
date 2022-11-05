@@ -1,0 +1,93 @@
+diff --git a/node_modules/@noir-lang/barretenberg/dest/wasm/barretenberg_wasm.js b/node_modules/@noir-lang/barretenberg/dest/wasm/barretenberg_wasm.js
+index 91a2bb7..e72d013 100644
+--- a/node_modules/@noir-lang/barretenberg/dest/wasm/barretenberg_wasm.js
++++ b/node_modules/@noir-lang/barretenberg/dest/wasm/barretenberg_wasm.js
+@@ -15,7 +15,7 @@ async function fetchCode() {
+         return await (0, util_1.promisify)(fs_1.readFile)(__dirname + '/barretenberg.wasm');
+     }
+     else {
+-        const res = await fetch('/barretenberg.wasm');
++        const res = await fetch(require('./barretenberg.wasm?url')['default']);
+         return Buffer.from(await res.arrayBuffer());
+     }
+ }
+diff --git a/node_modules/@noir-lang/barretenberg/dest/wasm/worker_pool.js b/node_modules/@noir-lang/barretenberg/dest/wasm/worker_pool.js
+index 0339d47..6858f62 100644
+--- a/node_modules/@noir-lang/barretenberg/dest/wasm/worker_pool.js
++++ b/node_modules/@noir-lang/barretenberg/dest/wasm/worker_pool.js
+@@ -2,11 +2,11 @@
+ Object.defineProperty(exports, "__esModule", { value: true });
+ exports.WorkerPool = void 0;
+ const log_1 = require("../log");
+-const worker_factory_1 = require("./worker_factory");
++// const worker_factory_1 = require("./worker_factory");
+ const debug = (0, log_1.createDebugLogger)('bb:worker_pool');
+ class WorkerPool {
+     constructor() {
+-        this.workers = [];
++        this.workers = [worker];
+     }
+     static async new(barretenberg, poolSize) {
+         const pool = new WorkerPool();
+@@ -14,16 +14,52 @@ class WorkerPool {
+         return pool;
+     }
+     async init(module, poolSize) {
+-        debug(`creating ${poolSize} workers...`);
+-        const start = new Date().getTime();
+-        this.workers = await Promise.all(Array(poolSize)
+-            .fill(0)
+-            .map((_, i) => (0, worker_factory_1.createWorker)(`${i}`, module, i === 0 ? 10000 : 256)));
+-        debug(`created workers: ${new Date().getTime() - start}ms`);
++        await this.workers[0].init(module, 10000)
+     }
+     async destroy() {
+-        await Promise.all(this.workers.map(worker_factory_1.destroyWorker));
++        // await Promise.all(this.workers.map(worker_factory_1.destroyWorker));
+     }
+ }
+ exports.WorkerPool = WorkerPool;
+-//# sourceMappingURL=data:application/json;base64,eyJ2ZXJzaW9uIjozLCJmaWxlIjoid29ya2VyX3Bvb2wuanMiLCJzb3VyY2VSb290IjoiIiwic291cmNlcyI6WyIuLi8uLi9zcmMvd2FzbS93b3JrZXJfcG9vbC50cyJdLCJuYW1lcyI6W10sIm1hcHBpbmdzIjoiOzs7QUFBQSxnQ0FBMkM7QUFHM0MscURBQStEO0FBRS9ELE1BQU0sS0FBSyxHQUFHLElBQUEsdUJBQWlCLEVBQUMsZ0JBQWdCLENBQUMsQ0FBQztBQUVsRCxNQUFhLFVBQVU7SUFBdkI7UUFDUyxZQUFPLEdBQXlCLEVBQUUsQ0FBQztJQXNCNUMsQ0FBQztJQXBCQyxNQUFNLENBQUMsS0FBSyxDQUFDLEdBQUcsQ0FBQyxZQUE4QixFQUFFLFFBQWdCO1FBQy9ELE1BQU0sSUFBSSxHQUFHLElBQUksVUFBVSxFQUFFLENBQUM7UUFDOUIsTUFBTSxJQUFJLENBQUMsSUFBSSxDQUFDLFlBQVksQ0FBQyxNQUFNLEVBQUUsUUFBUSxDQUFDLENBQUM7UUFDL0MsT0FBTyxJQUFJLENBQUM7SUFDZCxDQUFDO0lBRU0sS0FBSyxDQUFDLElBQUksQ0FBQyxNQUEwQixFQUFFLFFBQWdCO1FBQzVELEtBQUssQ0FBQyxZQUFZLFFBQVEsYUFBYSxDQUFDLENBQUM7UUFDekMsTUFBTSxLQUFLLEdBQUcsSUFBSSxJQUFJLEVBQUUsQ0FBQyxPQUFPLEVBQUUsQ0FBQztRQUNuQyxJQUFJLENBQUMsT0FBTyxHQUFHLE1BQU0sT0FBTyxDQUFDLEdBQUcsQ0FDOUIsS0FBSyxDQUFDLFFBQVEsQ0FBQzthQUNaLElBQUksQ0FBQyxDQUFDLENBQUM7YUFDUCxHQUFHLENBQUMsQ0FBQyxDQUFDLEVBQUUsQ0FBQyxFQUFFLEVBQUUsQ0FBQyxJQUFBLDZCQUFZLEVBQUMsR0FBRyxDQUFDLEVBQUUsRUFBRSxNQUFNLEVBQUUsQ0FBQyxLQUFLLENBQUMsQ0FBQyxDQUFDLENBQUMsS0FBSyxDQUFDLENBQUMsQ0FBQyxHQUFHLENBQUMsQ0FBQyxDQUN0RSxDQUFDO1FBQ0YsS0FBSyxDQUFDLG9CQUFvQixJQUFJLElBQUksRUFBRSxDQUFDLE9BQU8sRUFBRSxHQUFHLEtBQUssSUFBSSxDQUFDLENBQUM7SUFDOUQsQ0FBQztJQUVNLEtBQUssQ0FBQyxPQUFPO1FBQ2xCLE1BQU0sT0FBTyxDQUFDLEdBQUcsQ0FBQyxJQUFJLENBQUMsT0FBTyxDQUFDLEdBQUcsQ0FBQyw4QkFBYSxDQUFDLENBQUMsQ0FBQztJQUNyRCxDQUFDO0NBQ0Y7QUF2QkQsZ0NBdUJDIn0=
+\ No newline at end of file
++
++const _1 = require('./barretenberg_wasm')
++let wasm;
++
++const worker = {
++    async init(module, initial) {
++        wasm = new _1.BarretenbergWasm();
++        wasm.on('log', str => {
++            console.log(str)
++        });
++        await wasm.init(module, initial);
++    },
++    async transferToHeap(buffer, offset) {
++        wasm.transferToHeap(buffer, offset);
++    },
++    async sliceMemory(start, end) {
++        const mem = wasm.sliceMemory(start, end);
++        return mem
++        // return (0, worker_1.Transfer)(mem, [mem.buffer]);
++    },
++    async call(name, ...args) {
++        return wasm.call(name, ...args);
++    },
++    async memSize() {
++        return wasm.memSize();
++    },
++    logs() {
++        // return observable_1.Observable.from(subject);
++    },
++    /**
++     * When calling the wasm, sometimes a caller will require exclusive access over a series of calls.
++     * e.g. When a result is written to address 0, one cannot have another caller writing to the same address via
++     * transferToHeap before the result is read via sliceMemory.
++     * acquire() gets a single token from a fifo. The caller must call release() to add the token back.
++     */
++    async acquire() {
++        await wasm.acquire();
++    },
++    async release() {
++        wasm.release();
++    },
++}

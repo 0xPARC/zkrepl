@@ -2,6 +2,7 @@
     cwd() {
         return ""
     },
+    env: {},
 }
 import { Buffer } from "buffer-es6"
 ;(globalThis as any).Buffer = Buffer
@@ -11,9 +12,25 @@ import * as path from "path-browserify"
 import { WasmFs } from "@wasmer/wasmfs"
 import { unzip } from "unzipit"
 
+import noirWasmURL from "@noir-lang/noir_wasm/noir_wasm_bg.wasm?url"
 import circomspectWasmURL from "circomspect/circomspect.wasm?url"
 import circomLib from "../data/circomlib.zip?url"
 import circomWasmURL from "circom2/circom.wasm?url"
+import createNoir from "./noir_wasm"
+
+import {
+    setup_generic_prover_and_verifier,
+    create_proof,
+    verify_proof,
+    create_proof_with_witness,
+} from "@noir-lang/barretenberg/dest/client_proofs"
+import {
+    packed_witness_to_witness,
+    serialise_public_inputs,
+    compute_witnesses,
+} from "@noir-lang/aztec_backend"
+import initAztecBackend from "@noir-lang/aztec_backend"
+import aztecBackendWasmUrl from "@noir-lang/aztec_backend/aztec_backend_bg.wasm?url"
 
 const baseNow = Math.floor((Date.now() - performance.now()) * 1e-3)
 
@@ -205,6 +222,10 @@ async function createFsBindings() {
 }
 
 export async function runCircomspect(fileName = "main.circom") {
+    if (fileName.endsWith(".nr")) {
+        return
+    }
+
     const runLoop = await createFsBindings()
 
     const wasm = await loadWasm(circomspectWasmURL)
@@ -246,6 +267,67 @@ export async function runCircomspect(fileName = "main.circom") {
     })
 }
 
+export async function runNoir(fileName, opts) {
+    const startTime = performance.now()
+    const runLoop = await createFsBindings()
+
+    await initAztecBackend(aztecBackendWasmUrl)
+    const wasm = await loadWasm(noirWasmURL)
+    await runLoop(async (fsBindings) => {
+        const { exports, imports, setWasm } = createNoir((path) => {
+            const result = fsBindings.readFileSync(path, "utf-8")
+            console.log("read file", path, result)
+            return result
+        })
+        let instance = await WebAssembly.instantiate(wasm, imports)
+        setWasm(instance.exports)
+        try {
+            const compiled_program = exports.compile("./" + fileName)
+            console.log(compiled_program)
+
+            let acir = compiled_program.circuit
+            const abi = compiled_program.abi
+            console.log("meep")
+            // debugger
+
+            const acir_bytes = exports.acir_to_bytes(acir)
+
+            let [prover, verifier] = await setup_generic_prover_and_verifier(
+                acir
+            )
+
+            for (let key in opts.input) {
+                console.log(abi, opts.input[key])
+                // abi[key] = opts.input[key]
+            }
+
+            console.log(prover, verifier)
+            const proof = await create_proof(prover, acir, abi)
+
+            const verified = await verify_proof(verifier, proof)
+
+            console.log(proof, verified)
+
+            const filePrefix = fileName.replace(".nr", "")
+            const elapsed = performance.now() - startTime
+
+            postMessage({
+                type: "Artifacts",
+                text: `Finished in ${(elapsed / 1000).toFixed(2)}s`,
+                done: true,
+                files: Object.fromEntries(
+                    Object.entries({
+                        [`${filePrefix}.acir`]: acir_bytes,
+                        [`${filePrefix}.sol`]: verifier.ethSmartContract,
+                    }).filter(([key, val]) => val)
+                ),
+            })
+        } catch (err) {
+            console.log(err)
+        }
+    })
+}
+
 export async function runCircom(
     fileName: string = "main.circom",
     options = {
@@ -254,9 +336,8 @@ export async function runCircom(
         nor1cs: false,
     }
 ) {
-    const runLoop = await createFsBindings()
-
     const wasm = await loadWasm(circomWasmURL)
+    const runLoop = await createFsBindings()
 
     await runLoop(async (fsBindings) => {
         let wasi = new WASI({

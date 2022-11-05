@@ -19,11 +19,17 @@
         "url": "https://github.com/antimatter15/zkrepl/issues"
     },
     "resolutions": {
-        "ffjavascript": "0.2.56"
+        "ffjavascript": "0.2.56",
+        "@noir-lang/aztec_backend": "0.12.0"
     },
     "homepage": "https://github.com/antimatter15/zkrepl#readme",
     "dependencies": {
+        "@esbuild-plugins/node-globals-polyfill": "^0.1.1",
+        "@esbuild-plugins/node-modules-polyfill": "^0.1.4",
         "@iden3/binfileutils": "^0.0.11",
+        "@noir-lang/aztec_backend": "^0.12.0",
+        "@noir-lang/barretenberg": "^2.19.0",
+        "@noir-lang/noir_wasm": "^0.10.0",
         "@types/lodash": "^4.14.185",
         "@types/node": "^16.11.12",
         "@types/sarif": "^2.1.4",
