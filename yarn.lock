@@ -408,10 +408,10 @@ circom_runtime@0.1.20:
   dependencies:
     ffjavascript "0.2.55"
 
-circomspect@^0.0.5:
-  version "0.0.5"
-  resolved "https://registry.yarnpkg.com/circomspect/-/circomspect-0.0.5.tgz#9696a6ca4afed479cbfe29691f8146f211693879"
-  integrity sha512-MfU6hS2hgIGm1RT+mhYW+2dbGGy8+lE3+Q7Y5RfwUas4Lf2Ul0Ix4iZ9/3F8ieeAH4M7rS2Kz9G+sd4zCh8Vdw==
+circomspect@^0.0.7:
+  version "0.0.7"
+  resolved "https://registry.yarnpkg.com/circomspect/-/circomspect-0.0.7.tgz#b01b45c6bed36ab69626cf8a5806f31ca195bbe7"
+  integrity sha512-BZ9nPAHJWLoCKBaI3atoqZeAmM35vyREV861IDqB2OkoU/10e7CMD/PLlMtcte3w5hSfWUTxY+dHWrMkbT81cQ==
   dependencies:
     "@wasmer/wasi" "^0.12.0"
     path-browserify "^1.0.1"

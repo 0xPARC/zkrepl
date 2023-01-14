@@ -218,6 +218,8 @@ export async function runCircomspect(fileName = "main.circom") {
                 fileName,
                 "--sarif-file",
                 "__circomspect.sarif",
+                '--allow',
+                'P1003'
             ] as string[],
 
             // Environment variables that are accesible to the WASI module
