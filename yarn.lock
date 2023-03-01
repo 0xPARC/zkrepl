@@ -392,10 +392,10 @@ ci-info@^2.0.0:
   resolved "https://registry.yarnpkg.com/ci-info/-/ci-info-2.0.0.tgz#67a9e964be31a51e15e5010d58e6f12834002f46"
   integrity sha512-5tK7EtrZ0N+OLFMthtqOj4fI2Jeb88C4CAZPu25LDVUgXJ0A3Js4PMGqrn0JU1W0Mh1/Z8wZzYPxqUrXeBboCQ==
 
-circom2@^0.2.11:
-  version "0.2.11"
-  resolved "https://registry.yarnpkg.com/circom2/-/circom2-0.2.11.tgz#169338816e753ecbec9360b8c1a299fc133b5173"
-  integrity sha512-krsqYFRhuKEv/Nt4J7/o/Dd2geCB0GNDYkUh0j4hb/9fMgpg6k4C8GSggDtDadJmgGRyXbdI301AFjLlIiA+Cg==
+circom2@^0.2.13:
+  version "0.2.13"
+  resolved "https://registry.yarnpkg.com/circom2/-/circom2-0.2.13.tgz#a130436357f201035261de6f133a0895fda99592"
+  integrity sha512-+25TuOjhiMEeDKvYYjlFm0hSTq37SyprYvebCqXfGtEurVBnhCJuwp1jLX246qRziMhNk5y9LdVfUtAxl/ncSQ==
   dependencies:
     "@wasmer/wasi" "^0.12.0"
     is-typed-array "^1.1.8"
@@ -408,10 +408,10 @@ circom_runtime@0.1.20:
   dependencies:
     ffjavascript "0.2.55"
 
-circomspect@^0.0.7:
-  version "0.0.7"
-  resolved "https://registry.yarnpkg.com/circomspect/-/circomspect-0.0.7.tgz#b01b45c6bed36ab69626cf8a5806f31ca195bbe7"
-  integrity sha512-BZ9nPAHJWLoCKBaI3atoqZeAmM35vyREV861IDqB2OkoU/10e7CMD/PLlMtcte3w5hSfWUTxY+dHWrMkbT81cQ==
+circomspect@^0.0.8:
+  version "0.0.8"
+  resolved "https://registry.yarnpkg.com/circomspect/-/circomspect-0.0.8.tgz#1a82fa1559451c92e94a4e2c12044fc3389b862d"
+  integrity sha512-VyrydS2qgwJXG08Uf6VJn1E46wjPdIvQwZpqwuWFbhg7SFyiCjq0/AgXIDffJPx8dRy9NBRKF/pYm5AJDCgDuA==
   dependencies:
     "@wasmer/wasi" "^0.12.0"
     path-browserify "^1.0.1"
