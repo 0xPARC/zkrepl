@@ -111,17 +111,26 @@ async function createFsBindings() {
     // it is pretty garbage and shouldn't have any reason for working
     // but it seems to work well enough to speed up more complex
     // circuits by more than 10x
+
+    console.log(wasmFs.fs)
     const fsBindings = {
         ...wasmFs.fs,
-        realpathSync(path: string) {
-            // console.log("realpathSync>>", path)
+        openSync(path: string, flags: any) {
+            // console.log("openSync>>", path, arguments)
             const clr = path.replace(/.*circomlib\//, "circomlib/")
             if (path.includes("circomlib/") && wasmFs.fs.existsSync(clr))
-                return clr
+                path = clr;
+            return wasmFs.fs.openSync.call(wasmFs.fs, path, flags)
+        },
+        statSync(path: string) {
+            // console.log("statSync>>", path, arguments)
+            const clr = path.replace(/.*circomlib\//, "circomlib/")
+            if (path.includes("circomlib/") && wasmFs.fs.existsSync(clr))
+                path = clr;
             if (path.startsWith("external/") && !wasmFs.fs.existsSync(path)) {
                 fetchExternalResource = path
             }
-            return wasmFs.fs.realpathSync(path)
+            return wasmFs.fs.statSync.call(wasmFs.fs, path)
         },
         writeSync(
             fd: number,
