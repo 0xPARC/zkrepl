@@ -392,10 +392,10 @@ ci-info@^2.0.0:
   resolved "https://registry.yarnpkg.com/ci-info/-/ci-info-2.0.0.tgz#67a9e964be31a51e15e5010d58e6f12834002f46"
   integrity sha512-5tK7EtrZ0N+OLFMthtqOj4fI2Jeb88C4CAZPu25LDVUgXJ0A3Js4PMGqrn0JU1W0Mh1/Z8wZzYPxqUrXeBboCQ==
 
-circom2@^0.2.13:
-  version "0.2.13"
-  resolved "https://registry.yarnpkg.com/circom2/-/circom2-0.2.13.tgz#a130436357f201035261de6f133a0895fda99592"
-  integrity sha512-+25TuOjhiMEeDKvYYjlFm0hSTq37SyprYvebCqXfGtEurVBnhCJuwp1jLX246qRziMhNk5y9LdVfUtAxl/ncSQ==
+circom2@^0.2.16:
+  version "0.2.16"
+  resolved "https://registry.yarnpkg.com/circom2/-/circom2-0.2.16.tgz#8f2476636aa00734e61aec730a57894927978aac"
+  integrity sha512-ZFE14aXH0xrEf+HoB1brnV7ID1AKdz3j88R4y8JWYN05PoTozuoIBYT80WAspjj7GeelIk9GWLZYdgITF+YABg==
   dependencies:
     "@wasmer/wasi" "^0.12.0"
     is-typed-array "^1.1.8"
