@@ -155,7 +155,11 @@ class WitnessCalculator {
                 throw new Error(`Too many values for input signal ${k}\n`)
             }
             for (let i = 0; i < fArr.length; i++) {
-                const arrFr = toArray32(BigInt(fArr[i]) % this.prime, this.n32)
+                let possibleNegative = BigInt(fArr[i])
+                while (possibleNegative < 0n) {
+                  possibleNegative += this.prime
+                }
+                const arrFr = toArray32(possibleNegative % this.prime, this.n32)
                 for (let j = 0; j < this.n32; j++) {
                     this.instance.exports.writeSharedRWMemory(
                         j,
