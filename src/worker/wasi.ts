@@ -14,6 +14,7 @@ import { unzip } from "unzipit"
 import circomspectWasmURL from "circomspect/circomspect.wasm?url"
 import circomLib from "../data/circomlib.zip?url"
 import circomWasmURL from "circom2/circom.wasm?url"
+import getLibraryUrlMap from "./libraries"
 
 const baseNow = Math.floor((Date.now() - performance.now()) * 1e-3)
 
@@ -85,13 +86,17 @@ async function initFS() {
 export const wasmFsPromise = initFS()
 
 export function replaceExternalIncludes(code: string) {
+
     return code.replace(/(include\s+")([^"]+)"/g, (all, prefix, fileName) => {
-        if (fileName.startsWith("gist:"))
-            return (
-                prefix +
-                fileName.replace("gist:", "external/https/gist.github.com/") +
-                '"'
-            )
+        let library_url_map = getLibraryUrlMap();
+        for (let key in library_url_map) {
+            if (fileName.startsWith(key))
+                return (
+                    prefix +
+                    fileName.replace(key, "external/https/" + library_url_map[key]) +
+                    '"'
+                )
+        }
         return all.replace(/(include\s+")(\w+):\/\//, "$1external/$2/")
     })
 }
@@ -317,6 +322,7 @@ function removeMainComponent(code: string) {
 async function fetchText(url: string) {
     let req
     try {
+        console.log("Fetching: ", url);
         req = await fetch(url)
     } catch (err) {
         throw new Error(`Failed to fetch ${url}`)
@@ -356,12 +362,12 @@ async function fetchResource(path: string) {
     // 'external/https/github.com/0xPARC/zk-group-sigs/blob/master/circuits/deny.circom'
     if (
         match(
-            /^external\/https\/github\.com\/([^/]+)\/([^/]+)\/blob\/([^/]+)\/(.*)/
+            /^external\/https\/github\.com\/([^/]+)\/([^/]+)\/(blob|tree)\/([^/]+)\/(.*)/
         )
     ) {
         // https://raw.githubusercontent.com/0xPARC/zk-group-sigs/master/circuits/deny.circom
         return fetchText(
-            `https://raw.githubusercontent.com/${m[1]}/${m[2]}/${m[3]}/${m[4]}`
+            `https://raw.githubusercontent.com/${m[1]}/${m[2]}/${m[4]}/${m[5]}`
         )
     }
 

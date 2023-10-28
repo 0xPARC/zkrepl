@@ -13,6 +13,7 @@ import plonkSolidityVerifierTemplate from "../data/plonk.sol?raw"
 import snarkJsTemplate from "../data/snarkjs.min.js?raw"
 import appTemplate from "../data/demo.html?raw"
 import { zKey, plonk } from "snarkjs"
+import getLibraryUrlMap from "./libraries"
 
 let wtnsFile: Uint8Array
 let filePrefix: string
