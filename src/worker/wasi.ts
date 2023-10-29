@@ -96,12 +96,12 @@ export function replaceExternalIncludes(code: string) {
             {
                 return (
                     prefix +
-                    fileName.replace(key, "external/https/" + library_url_map[key]) +
+                    fileName.replace(key, "/external/https/" + library_url_map[key]) +
                     '"'
                     );
             }
         }
-        return all.replace(/(include\s+")(\w+):\/\//, "$1external/$2/")
+        return all.replace(/(include\s+")(\w+):\/\//, "$1/external/$2/")
     });
     console.log("Final code now starting with", finalCode.split('\n').slice(0, 8).join('\n'));
     return finalCode;
@@ -132,37 +132,15 @@ async function createFsBindings() {
             if (path.includes("circomlib/") && wasmFs.fs.existsSync(clr))
                 path = clr;
 
-            // If the path has multiple externals/ because we are indexing
-            // relative to the current path, then collapse them all to the root
-            // This is to avoid the same file being at external/x and external/y/external/x
-            // which will cause collisions with circomspect.
-            const externalCount = (path.match(/external/g) || []).length;
-            if (externalCount > 1) {
-                const lastExternalIndex = path.lastIndexOf("external");
-                path = path.substring(lastExternalIndex);
-                console.log("Truncated open path to ", path);
-            }
-
             return wasmFs.fs.openSync.call(wasmFs.fs, path, flags)
         },
         statSync(path: string) {
-            // console.log("statSync>>", path, arguments)
+            console.log("statSync>>", path, arguments)
             const clr = path.replace(/.*circomlib\//, "circomlib/")
             if (path.includes("circomlib/") && wasmFs.fs.existsSync(clr))
                 path = clr;
             
-            // If the path has multiple externals/ because we are indexing
-            // relative to the current path, then collapse them all to the root
-            // This is to avoid the same file being at external/x and external/y/external/x
-            // which will cause collisions with circomspect.
-            const externalCount = (path.match(/external/g) || []).length;
-            if (externalCount > 1) {
-                const lastExternalIndex = path.lastIndexOf("external");
-                path = path.substring(lastExternalIndex);
-                console.log("Truncated stat path to ", path);
-            }
-
-            if (path.startsWith("external/") && !wasmFs.fs.existsSync(path)) {
+            if ((path.startsWith("external/") || path.startsWith("/external/")) && !wasmFs.fs.existsSync(path)) {
                 fetchExternalResource = path
             }
             return wasmFs.fs.statSync.call(wasmFs.fs, path)
@@ -388,23 +366,9 @@ async function fetchResource(path: string) {
         return fetchGist(m[1])
     }
 
-    // If starts with external and there is more than one external, then truncate to the start of the last external/
-    // Or else sometimes you end up with links like 'https://raw.githubusercontent.com/zkemail/zk-regex/main/packages/circom/circuits/common/external/https/github.com/zkemail/zk-regex/tree/main/packages/circom/circuits/regex_helpers.circom'
-    // Since we have the code that automatically filters such paths out in openSync and statSync, we expect this to never be called.
     if (
         match(
-            /^external\/.*external\/https\/github\.com\/([^/]+)\/([^/]+)\/(blob|tree)\/([^/]+)\/(.*)/
-        )
-    )  {
-        console.log("Matched double external pattern: ", path, m[1]);
-        return fetchText(
-            `https://raw.githubusercontent.com/${m[1]}/${m[2]}/${m[4]}/${m[5]}`
-        )
-    }
-    
-    if (
-        match(
-            /^external\/https\/github\.com\/([^/]+)\/([^/]+)\/(blob|tree)\/([^/]+)\/(.*)/
+            /^\/?external\/https\/github\.com\/([^/]+)\/([^/]+)\/(blob|tree)\/([^/]+)\/(.*)/
         )
     ) {
         // https://raw.githubusercontent.com/0xPARC/zk-group-sigs/master/circuits/deny.circom
