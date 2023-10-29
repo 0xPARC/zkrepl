@@ -29,6 +29,7 @@ type File = {
 async function initFs(files: File[]) {
     const wasmFs = await wasmFsPromise
 
+    // This is only for main.circom
     for (var file of files) {
         wasmFs.fs.writeFileSync(file.name, replaceExternalIncludes(file.value))
     }

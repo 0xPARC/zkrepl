@@ -86,19 +86,25 @@ async function initFS() {
 export const wasmFsPromise = initFS()
 
 export function replaceExternalIncludes(code: string) {
-
-    return code.replace(/(include\s+")([^"]+)"/g, (all, prefix, fileName) => {
+    
+    console.log("Replacing external includes in file starting with", code.split('\n').slice(0, 8).join('\n'));
+    
+    let finalCode = code.replace(/(include\s+")([^"]+)"/g, (all, prefix, fileName) => {
         let library_url_map = getLibraryUrlMap();
         for (let key in library_url_map) {
             if (fileName.startsWith(key))
+            {
                 return (
                     prefix +
                     fileName.replace(key, "external/https/" + library_url_map[key]) +
                     '"'
-                )
+                    );
+            }
         }
         return all.replace(/(include\s+")(\w+):\/\//, "$1external/$2/")
-    })
+    });
+    console.log("Final code now starting with", finalCode.split('\n').slice(0, 8).join('\n'));
+    return finalCode;
 }
 
 async function createFsBindings() {
@@ -125,6 +131,18 @@ async function createFsBindings() {
             const clr = path.replace(/.*circomlib\//, "circomlib/")
             if (path.includes("circomlib/") && wasmFs.fs.existsSync(clr))
                 path = clr;
+
+            // If the path has multiple externals/ because we are indexing
+            // relative to the current path, then collapse them all to the root
+            // This is to avoid the same file being at external/x and external/y/external/x
+            // which will cause collisions with circomspect.
+            const externalCount = (path.match(/external/g) || []).length;
+            if (externalCount > 1) {
+                const lastExternalIndex = path.lastIndexOf("external");
+                path = path.substring(lastExternalIndex);
+                console.log("Truncated open path to ", path);
+            }
+
             return wasmFs.fs.openSync.call(wasmFs.fs, path, flags)
         },
         statSync(path: string) {
@@ -132,6 +150,18 @@ async function createFsBindings() {
             const clr = path.replace(/.*circomlib\//, "circomlib/")
             if (path.includes("circomlib/") && wasmFs.fs.existsSync(clr))
                 path = clr;
+            
+            // If the path has multiple externals/ because we are indexing
+            // relative to the current path, then collapse them all to the root
+            // This is to avoid the same file being at external/x and external/y/external/x
+            // which will cause collisions with circomspect.
+            const externalCount = (path.match(/external/g) || []).length;
+            if (externalCount > 1) {
+                const lastExternalIndex = path.lastIndexOf("external");
+                path = path.substring(lastExternalIndex);
+                console.log("Truncated stat path to ", path);
+            }
+
             if (path.startsWith("external/") && !wasmFs.fs.existsSync(path)) {
                 fetchExternalResource = path
             }
@@ -249,7 +279,6 @@ export async function runCircomspect(fileName = "main.circom") {
                 fs: fsBindings,
             },
         })
-
         let instance = await WebAssembly.instantiate(wasm, {
             ...wasi.getImports(wasm),
         })
@@ -322,7 +351,7 @@ function removeMainComponent(code: string) {
 async function fetchText(url: string) {
     let req
     try {
-        console.log("Fetching: ", url);
+        console.log("Fetching text from: ", url);
         req = await fetch(url)
     } catch (err) {
         throw new Error(`Failed to fetch ${url}`)
@@ -359,7 +388,20 @@ async function fetchResource(path: string) {
         return fetchGist(m[1])
     }
 
-    // 'external/https/github.com/0xPARC/zk-group-sigs/blob/master/circuits/deny.circom'
+    // If starts with external and there is more than one external, then truncate to the start of the last external/
+    // Or else sometimes you end up with links like 'https://raw.githubusercontent.com/zkemail/zk-regex/main/packages/circom/circuits/common/external/https/github.com/zkemail/zk-regex/tree/main/packages/circom/circuits/regex_helpers.circom'
+    // Since we have the code that automatically filters such paths out in openSync and statSync, we expect this to never be called.
+    if (
+        match(
+            /^external\/.*external\/https\/github\.com\/([^/]+)\/([^/]+)\/(blob|tree)\/([^/]+)\/(.*)/
+        )
+    )  {
+        console.log("Matched double external pattern: ", path, m[1]);
+        return fetchText(
+            `https://raw.githubusercontent.com/${m[1]}/${m[2]}/${m[4]}/${m[5]}`
+        )
+    }
+    
     if (
         match(
             /^external\/https\/github\.com\/([^/]+)\/([^/]+)\/(blob|tree)\/([^/]+)\/(.*)/
