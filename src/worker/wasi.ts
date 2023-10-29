@@ -90,14 +90,12 @@ export function replaceExternalIncludes(code: string) {
     let finalCode = code.replace(/(include\s+")([^"]+)"/g, (all, prefix, fileName) => {
         let library_url_map = getLibraryUrlMap();
         for (let key in library_url_map) {
-            if (fileName.startsWith(key))
-            {
-                return (
-                    prefix +
-                    fileName.replace(key, "/external/https/" + library_url_map[key]) +
-                    '"'
-                    );
+            if (fileName.startsWith(key)) {
+                return (prefix + "/external/https/" + fileName.replace(key, library_url_map[key]) + '"');
             }
+        }
+        if(fileName.startsWith("circomlib/")) {
+            return (prefix + "/" + fileName + '"');
         }
         return all.replace(/(include\s+")(\w+):\/\//, "$1/external/$2/")
     });
@@ -126,7 +124,7 @@ async function createFsBindings() {
         ...wasmFs.fs,
         openSync(path: string, flags: any) {
             // console.log("openSync>>", path, arguments)
-            const clr = path.replace(/.*circomlib\//, "circomlib/")
+            const clr = path.replace(/.*circomlib\//, "/circomlib/")
             if (path.includes("circomlib/") && wasmFs.fs.existsSync(clr))
                 path = clr;
 
@@ -134,7 +132,7 @@ async function createFsBindings() {
         },
         statSync(path: string) {
             console.log("statSync>>", path, arguments)
-            const clr = path.replace(/.*circomlib\//, "circomlib/")
+            const clr = path.replace(/.*circomlib\//, "/circomlib/")
             if (path.includes("circomlib/") && wasmFs.fs.existsSync(clr))
                 path = clr;
             
