@@ -14,6 +14,9 @@
         "url": "git+https://github.com/antimatter15/zkrepl.git"
     },
     "author": "",
+    "engines": {
+        "node": ">=15.0.0"
+    },
     "license": "GPL-3.0",
     "bugs": {
         "url": "https://github.com/antimatter15/zkrepl/issues"

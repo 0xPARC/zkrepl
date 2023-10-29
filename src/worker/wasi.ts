@@ -86,7 +86,7 @@ async function initFS() {
 export const wasmFsPromise = initFS()
 
 export function replaceExternalIncludes(code: string) {
-    console.log("Replacing external includes in file starting with", code.split('\n').slice(0, 8).join('\n'));
+    // console.log("Replacing external includes in file starting with", code.split('\n').slice(0, 8).join('\n'));
     let finalCode = code.replace(/(include\s+")([^"]+)"/g, (all, prefix, fileName) => {
         let library_url_map = getLibraryUrlMap();
         for (let key in library_url_map) {
@@ -99,7 +99,7 @@ export function replaceExternalIncludes(code: string) {
         }
         return all.replace(/(include\s+")(\w+):\/\//, "$1/external/$2/")
     });
-    console.log("Final code now starting with", finalCode.split('\n').slice(0, 8).join('\n'));
+    // console.log("Final code now starting with", finalCode.split('\n').slice(0, 8).join('\n'));
     return finalCode;
 }
 
