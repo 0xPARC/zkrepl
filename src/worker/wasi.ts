@@ -94,6 +94,10 @@ export function replaceExternalIncludes(code: string) {
                 return (prefix + "/external/https/" + fileName.replace(key, library_url_map[key]) + '"');
             }
         }
+        // This conditional is needed to resolve https://github.com/0xPARC/zkrepl/issues/16
+        if(fileName.startsWith("circomlib/circuits/")) {
+            return (prefix + "/" + fileName.replace("circomlib/circuits/", "circomlib/") + '"');
+        }
         if(fileName.startsWith("circomlib/")) {
             return (prefix + "/" + fileName + '"');
         }
