@@ -14,6 +14,7 @@ import { unzip } from "unzipit"
 import circomspectWasmURL from "circomspect/circomspect.wasm?url"
 import circomLib from "../data/circomlib.zip?url"
 import circomWasmURL from "circom2/circom.wasm?url"
+import getLibraryUrlMap from "./libraries"
 
 const baseNow = Math.floor((Date.now() - performance.now()) * 1e-3)
 
@@ -85,15 +86,25 @@ async function initFS() {
 export const wasmFsPromise = initFS()
 
 export function replaceExternalIncludes(code: string) {
-    return code.replace(/(include\s+")([^"]+)"/g, (all, prefix, fileName) => {
-        if (fileName.startsWith("gist:"))
-            return (
-                prefix +
-                fileName.replace("gist:", "external/https/gist.github.com/") +
-                '"'
-            )
-        return all.replace(/(include\s+")(\w+):\/\//, "$1external/$2/")
-    })
+    // console.log("Replacing external includes in file starting with", code.split('\n').slice(0, 8).join('\n'));
+    let finalCode = code.replace(/(include\s+")([^"]+)"/g, (all, prefix, fileName) => {
+        let library_url_map = getLibraryUrlMap();
+        for (let key in library_url_map) {
+            if (fileName.startsWith(key)) {
+                return (prefix + "/external/https/" + fileName.replace(key, library_url_map[key]) + '"');
+            }
+        }
+        // This conditional is needed to resolve https://github.com/0xPARC/zkrepl/issues/16
+        if(fileName.startsWith("circomlib/circuits/")) {
+            return (prefix + "/" + fileName.replace("circomlib/circuits/", "circomlib/") + '"');
+        }
+        if(fileName.startsWith("circomlib/")) {
+            return (prefix + "/" + fileName + '"');
+        }
+        return all.replace(/(include\s+")(\w+):\/\//, "$1/external/$2/")
+    });
+    // console.log("Final code now starting with", finalCode.split('\n').slice(0, 8).join('\n'));
+    return finalCode;
 }
 
 async function createFsBindings() {
@@ -117,17 +128,19 @@ async function createFsBindings() {
         ...wasmFs.fs,
         openSync(path: string, flags: any) {
             // console.log("openSync>>", path, arguments)
-            const clr = path.replace(/.*circomlib\//, "circomlib/")
+            const clr = path.replace(/.*circomlib\//, "/circomlib/")
             if (path.includes("circomlib/") && wasmFs.fs.existsSync(clr))
                 path = clr;
+
             return wasmFs.fs.openSync.call(wasmFs.fs, path, flags)
         },
         statSync(path: string) {
-            // console.log("statSync>>", path, arguments)
-            const clr = path.replace(/.*circomlib\//, "circomlib/")
+            console.log("statSync>>", path, arguments)
+            const clr = path.replace(/.*circomlib\//, "/circomlib/")
             if (path.includes("circomlib/") && wasmFs.fs.existsSync(clr))
                 path = clr;
-            if (path.startsWith("external/") && !wasmFs.fs.existsSync(path)) {
+            
+            if ((path.startsWith("external/") || path.startsWith("/external/")) && !wasmFs.fs.existsSync(path)) {
                 fetchExternalResource = path
             }
             return wasmFs.fs.statSync.call(wasmFs.fs, path)
@@ -244,7 +257,6 @@ export async function runCircomspect(fileName = "main.circom") {
                 fs: fsBindings,
             },
         })
-
         let instance = await WebAssembly.instantiate(wasm, {
             ...wasi.getImports(wasm),
         })
@@ -317,6 +329,7 @@ function removeMainComponent(code: string) {
 async function fetchText(url: string) {
     let req
     try {
+        console.log("Fetching text from: ", url);
         req = await fetch(url)
     } catch (err) {
         throw new Error(`Failed to fetch ${url}`)
@@ -353,15 +366,14 @@ async function fetchResource(path: string) {
         return fetchGist(m[1])
     }
 
-    // 'external/https/github.com/0xPARC/zk-group-sigs/blob/master/circuits/deny.circom'
     if (
         match(
-            /^external\/https\/github\.com\/([^/]+)\/([^/]+)\/blob\/([^/]+)\/(.*)/
+            /^\/?external\/https\/github\.com\/([^/]+)\/([^/]+)\/(blob|tree)\/([^/]+)\/(.*)/
         )
     ) {
         // https://raw.githubusercontent.com/0xPARC/zk-group-sigs/master/circuits/deny.circom
         return fetchText(
-            `https://raw.githubusercontent.com/${m[1]}/${m[2]}/${m[3]}/${m[4]}`
+            `https://raw.githubusercontent.com/${m[1]}/${m[2]}/${m[4]}/${m[5]}`
         )
     }
 

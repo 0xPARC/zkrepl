@@ -1,5 +1,6 @@
 import * as monaco from "monaco-editor/esm/vs/editor/editor.api"
 import { circomWorker } from "./editor"
+import getLibraryUrlMap from "./worker/libraries"
 monaco.languages.register({ id: "circom" })
 
 export let replyHover = (data: any) => {}
@@ -26,13 +27,6 @@ monaco.languages.registerHoverProvider("circom", {
                         ""
                     )})`,
                 })
-            } else if (m[2].startsWith("gist:")) {
-                contents.push({
-                    value: `[View Source](https://gist.github.com/${m[2].replace(
-                        "gist:",
-                        ""
-                    )})`,
-                })
             } else if (
                 m[2].startsWith("http://") ||
                 m[2].startsWith("https://")
@@ -40,6 +34,19 @@ monaco.languages.registerHoverProvider("circom", {
                 contents.push({
                     value: `[View Source](${m[2]})`,
                 })
+            } else {
+                const libraryUrlMap = getLibraryUrlMap();
+                for (const library in libraryUrlMap) {
+                    if (m[2].startsWith(library)) {
+                        contents.push({
+                            value: `[View Source](https://${libraryUrlMap[library]}/${m[2].replace(
+                                library,
+                                ""
+                            )})`,
+                        });
+                        break;
+                    }
+                }
             }
             return {
                 range: new monaco.Range(

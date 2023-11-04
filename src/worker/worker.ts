@@ -13,6 +13,7 @@ import plonkSolidityVerifierTemplate from "../data/plonk.sol?raw"
 import snarkJsTemplate from "../data/snarkjs.min.js?raw"
 import appTemplate from "../data/demo.html?raw"
 import { zKey, plonk } from "snarkjs"
+import getLibraryUrlMap from "./libraries"
 
 let wtnsFile: Uint8Array
 let filePrefix: string
@@ -28,6 +29,7 @@ type File = {
 async function initFs(files: File[]) {
     const wasmFs = await wasmFsPromise
 
+    // This is only for main.circom
     for (var file of files) {
         wasmFs.fs.writeFileSync(file.name, replaceExternalIncludes(file.value))
     }
