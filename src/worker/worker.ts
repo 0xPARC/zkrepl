@@ -520,49 +520,49 @@ async function generateGroth16ProvingKey() {
 async function fetchPot(nConstraints: number) {
     const pots = [
         {
-            url: "https://bafybeiazktpgt2ima2wfaw6iqgl34o2l5jddy4e3doptcyrd2prsob4emu.ipfs.dweb.link/powersOfTau28_hez_final_11.ptau",
+            url: "https://fastfourier.nyc3.cdn.digitaloceanspaces.com/powers-of-tau/powersOfTau28_hez_final_11.ptau",
             name: "powersOfTau28_hez_final_11.ptau",
             maxConstraints: 1 << 11,
             size: 2442392,
         },
         {
-            url: "https://bafybeicjy5sx3rxl46qudsfqfa3d6tcbbtzcg3ky5xioj6ni7wrmab74we.ipfs.dweb.link/powersOfTau28_hez_final_12.ptau",
+            url: "https://fastfourier.nyc3.cdn.digitaloceanspaces.com/powers-of-tau/powersOfTau28_hez_final_12.ptau",
             name: "powersOfTau28_hez_final_12.ptau",
             maxConstraints: 1 << 12,
             size: 4801688,
         },
         {
-            url: "https://bafybeihxscoclwj7bklijpc7lsu5bwfv7av3qvtbzamlf3ovkki3pzqlpa.ipfs.dweb.link/powersOfTau28_hez_final_13.ptau",
+            url: "https://fastfourier.nyc3.cdn.digitaloceanspaces.com/powers-of-tau/powersOfTau28_hez_final_13.ptau",
             name: "powersOfTau28_hez_final_13.ptau",
             maxConstraints: 1 << 13,
             size: 9520280,
         },
         {
-            url: "https://bafybeigizi7cwad4bvvcgbzflua5qwxqh223zeexokh7xurhycgjkv6sga.ipfs.dweb.link/powersOfTau28_hez_final_14.ptau",
+            url: "https://fastfourier.nyc3.cdn.digitaloceanspaces.com/powers-of-tau/powersOfTau28_hez_final_14.ptau",
             name: "powersOfTau28_hez_final_14.ptau",
             maxConstraints: 1 << 14,
             size: 18957464,
         },
         {
-            url: "https://bafybeihi5cez3vyfhuuloytld7vdvsdizvbih7x3aa553son7fjvfb6kru.ipfs.dweb.link/powersOfTau28_hez_final_15.ptau",
+            url: "https://fastfourier.nyc3.cdn.digitaloceanspaces.com/powers-of-tau/powersOfTau28_hez_final_15.ptau",
             name: "powersOfTau28_hez_final_15.ptau",
             maxConstraints: 1 << 15,
             size: 37831832,
         },
         {
-            url: "https://bafybeifkc4fasai6londgxwrkrrcdooptnn6227lckkawx2euoxusfutoe.ipfs.dweb.link/powersOfTau28_hez_final_16.ptau",
+            url: "https://fastfourier.nyc3.cdn.digitaloceanspaces.com/powers-of-tau/powersOfTau28_hez_final_16.ptau",
             name: "powersOfTau28_hez_final_16.ptau",
             maxConstraints: 1 << 16,
             size: 75580568,
         },
         {
-            url: "https://bafybeih4ffiue7ac3cnahd2biyu3aqax3avcpwpnftj7etkuj3alp563fi.ipfs.dweb.link/powersOfTau28_hez_final_17.ptau",
+            url: "https://fastfourier.nyc3.cdn.digitaloceanspaces.com/powers-of-tau/powersOfTau28_hez_final_17.ptau",
             name: "powersOfTau28_hez_final_17.ptau",
             maxConstraints: 1 << 17,
             size: 151078040,
         },
         {
-            url: "https://bafybeifg7o3tjsjvphzmghckydrj6cvebzrulgljgzmq2j5fu4g5p3nxpu.ipfs.dweb.link/powersOfTau28_hez_final_18.ptau",
+            url: "https://fastfourier.nyc3.cdn.digitaloceanspaces.com/powers-of-tau/powersOfTau28_hez_final_18.ptau",
             name: "powersOfTau28_hez_final_18.ptau",
             maxConstraints: 1 << 18,
             size: 302072984,
