@@ -19,6 +19,7 @@ export default defineConfig({
     base: "",
     build: {
         assetsDir: "",
+        outDir: 'docs',
         target: ["es2020"],
     },
     optimizeDeps: {
