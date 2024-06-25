@@ -172,7 +172,7 @@ contract PlonkVerifier {
                     acc := mulmod(acc, mload(pIn), q)
                     mstore(pIn, inv)
                 }
-                // pIn points to first element, we just set it.
+                // pIn points to the first element, we just set it.
                 mstore(pIn, acc)
             }
             
