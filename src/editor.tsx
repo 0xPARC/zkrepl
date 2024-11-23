@@ -326,7 +326,7 @@ export default function App() {
                 })
             }, 1000)
             editor.onDidChangeModelContent((change) => {
-                // console.log("chaend", change)
+                // console.log("change", change)
                 onChanged()
             })
             editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyS, save)
