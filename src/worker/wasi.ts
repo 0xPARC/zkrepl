@@ -51,7 +51,7 @@ const browserBindings = {
 
 async function loadWasm(url: string) {
     const response = await fetch(url)
-    const contentType = response.headers.get("Content-Type") || ""
+    const contentType = response.headers.get("Content-Type") ?? ""
     if (
         "instantiateStreaming" in WebAssembly &&
         contentType.startsWith("application/wasm")
