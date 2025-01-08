@@ -66,6 +66,21 @@
         #inputs textarea, #inputs input {
             width:  100%;
         }
+        .loader {
+            display: none;
+            border: 3px solid #f3f3f3;
+            border-radius: 50%;
+            border-top: 3px solid #673ab7;
+            width: 20px;
+            height: 20px;
+            animation: spin 1s linear infinite;
+            margin: 10px auto;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
     </style>
 </head>
 <body>
@@ -89,6 +104,8 @@
             Generate Proof
         </button>
 
+        <div id="proofLoader" class="loader"></div>
+
         <div id="proof"></div>
         <h4>Verify</h4>
         <textarea
@@ -98,6 +115,8 @@
 
         <textarea placeholder="Public signals..." id="publicSignals"></textarea>
         <button onclick="verifyProof()" id="verifybutton">Verify Proof</button>
+
+        <div id="verifyLoader" class="loader"></div>
 
         <div id="result"></div>
 
@@ -144,39 +163,42 @@
         document.getElementById('noscript').style.display = 'none'
 
         async function calculateProof() {
-            document.getElementById("proofbutton").disabled = true
+            document.getElementById("proofbutton").disabled = true;
+            document.getElementById("proofLoader").style.display = "block";
+            document.getElementById("proofData").value = "";
+            document.getElementById("publicSignals").value = "";
+            
             try {
-                const input_obj = {}
+                const input_obj = {};
 
                 for (let key in INPUT_JSON) {
                     if (Array.isArray(INPUT_JSON[key])) {
-                        input_obj[key] = JSON.parse(
-                            document.getElementById("input_" + key).value
-                        )
+                        const value = document.getElementById("input_" + key).value;
+                        try {
+                            input_obj[key] = JSON.parse(value);
+                        } catch (e) {
+                            throw new Error(`Invalid JSON format for input "${key}"`);
+                        }
                     } else {
-                        input_obj[key] = document.getElementById(
-                            "input_" + key
-                        ).value
+                        const value = document.getElementById("input_" + key).value;
+                        if (!value) {
+                            throw new Error(`Input "${key}" cannot be empty`);
+                        }
+                        input_obj[key] = value;
                     }
                 }
-                const prover =
-                    VKEY_DATA.protocol === "groth16"
-                        ? snarkjs.groth16
-                        : snarkjs.plonk
-                const { proof, publicSignals } = await prover.fullProve(
-                    input_obj,
-                    WASM_URL,
-                    ZKEY_DATA
-                )
+                
+                const prover = VKEY_DATA.protocol === "groth16" ? snarkjs.groth16 : snarkjs.plonk;
+                const { proof, publicSignals } = await prover.fullProve(input_obj, WASM_URL, ZKEY_DATA);
 
-                document.getElementById("proofData").value =
-                    JSON.stringify(proof)
-                document.getElementById("publicSignals").value =
-                    JSON.stringify(publicSignals)
+                document.getElementById("proofData").value = JSON.stringify(proof, null, 2);
+                document.getElementById("publicSignals").value = JSON.stringify(publicSignals, null, 2);
             } catch (err) {
-                document.getElementById("proofData").value = err
+                document.getElementById("proofData").value = `Error: ${err.message}`;
+            } finally {
+                document.getElementById("proofLoader").style.display = "none";
+                document.getElementById("proofbutton").disabled = false;
             }
-            document.getElementById("proofbutton").disabled = false
         }
 
         async function verifyProof() {
