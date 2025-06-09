@@ -36,7 +36,7 @@
         "blake2b-wasm": "^2.4.0",
         "buffer": "^6.0.3",
         "buffer-es6": "^4.9.3",
-        "circom2": "^0.2.16",
+        "circom2": "^0.2.22",
         "circomspect": "^0.0.8",
         "ffjavascript": "^0.2.56",
         "monaco-editor": "^0.30.1",
