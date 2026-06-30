@@ -68,6 +68,13 @@ import circomspectWasmURL from "circomspect/circomspect.wasm?url"
 import circomLib from "./data/circomlib.zip?url"
 import type { Log } from "sarif"
 import { replyHover } from "./syntax"
+import {
+    initialCaddrMCPStatus,
+    isCaddrMCPEnabled,
+    registerZkReplMCP,
+    showZkReplMCPAuthorization,
+    type CaddrMCPStatus,
+} from "./caddrMcp"
 console.log(circomLib, wasmURL, circomspectWasmURL)
 
 type Message = {
@@ -80,11 +87,16 @@ type Message = {
 export var circomWorker: Worker
 
 export default function App() {
+    const caddrEnabled = React.useMemo(() => isCaddrMCPEnabled(), [])
     const [running, setRunning] = React.useState<false | number>(false)
     const [messages, setMessages] = React.useState<Message[]>([])
+    const [caddrStatus, setCaddrStatus] =
+        React.useState<CaddrMCPStatus>(initialCaddrMCPStatus)
     const [editor, setEditor] =
         React.useState<monaco.editor.IStandaloneCodeEditor | null>(null)
     const modelsRef = React.useRef<monaco.editor.ITextModel[]>([])
+    const messagesRef = React.useRef<Message[]>([])
+    const runningRef = React.useRef(false)
     const monacoEl = React.useRef(null)
     const workerRef = React.useRef<(Worker & { running?: boolean }) | null>(
         null
@@ -94,6 +106,14 @@ export default function App() {
         Record<string, monaco.editor.ICodeEditorViewState>
     >({})
     const GistID = new URLSearchParams(location.search).get("gist")
+
+    React.useEffect(() => {
+        messagesRef.current = messages
+    }, [messages])
+
+    React.useEffect(() => {
+        runningRef.current = running !== false
+    }, [running])
 
     const run = () => {
         if (!workerRef.current || workerRef.current!.running) {
@@ -350,6 +370,16 @@ export default function App() {
                     }
                 }
             )
+            registerZkReplMCP({
+                getEditor: () => editor,
+                getModels: () => modelsRef.current,
+                getMessages: () => messagesRef.current,
+                isRunning: () => runningRef.current,
+                refresh: () => setMessages((k) => k.slice(0)),
+                run,
+                save,
+                setStatus: setCaddrStatus,
+            })
             const OAuthCode = new URLSearchParams(location.search).get("code")
             if (OAuthCode) {
                 history.replaceState(null, "", "/")
@@ -586,6 +616,29 @@ export default function App() {
                                 "Github Gist"
                             )}
                         </div>
+                        {caddrEnabled && (
+                            <button
+                                className={
+                                    "caddr-status " + caddrStatus.state
+                                }
+                                disabled={caddrStatus.state === "connected"}
+                                title={
+                                    caddrStatus.error ||
+                                    `Caddr-MCP ${caddrStatus.state}`
+                                }
+                                onClick={() => {
+                                    if (caddrStatus.state !== "connected") {
+                                        showZkReplMCPAuthorization()
+                                    }
+                                }}
+                            >
+                                <span
+                                    aria-hidden="true"
+                                    className="caddr-status-dot"
+                                />
+                                <span>{caddrStatus.label}</span>
+                            </button>
+                        )}
                         <img
                             className="logo"
                             src={new URL(

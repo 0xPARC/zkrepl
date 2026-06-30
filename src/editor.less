@@ -60,13 +60,63 @@ body {
     padding: 10px 20px;
     font-size: small;
     text-transform: uppercase;
-    display: flex;
-    gap: 10px;
+    display: grid;
+    grid-template-columns: 1fr 30px;
+    gap: 6px 10px;
+    align-items: start;
 
     .description {
-        flex: 1;
+        grid-column: 1;
+        grid-row: 1;
+    }
+    .caddr-status {
+        align-items: center;
+        align-self: start;
+        background: transparent;
+        border: 0;
+        color: #b8b8c8;
+        cursor: pointer;
+        display: inline-flex;
+        flex-shrink: 0;
+        font-size: 11px;
+        gap: 6px;
+        grid-column: 1 / -1;
+        grid-row: 2;
+        justify-self: start;
+        padding: 2px 0;
+        text-align: left;
+        text-transform: uppercase;
+        width: auto;
+
+        &:hover {
+            text-decoration: underline;
+        }
+        &:disabled {
+            cursor: default;
+            opacity: 1;
+            text-decoration: none;
+        }
+        &.connecting,
+        &.authorization {
+            color: #ffc857;
+        }
+        &.connected {
+            color: #7bd88f;
+        }
+        &.error {
+            color: #ff7b72;
+        }
+    }
+    .caddr-status-dot {
+        background: currentColor;
+        border-radius: 50%;
+        display: inline-block;
+        height: 7px;
+        width: 7px;
     }
     .logo {
+        grid-column: 2;
+        grid-row: 1;
         width: 30px;
         height: 30px;
     }
