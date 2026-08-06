@@ -4,7 +4,7 @@
 
 ## Getting Started
 
-```
+```f
 yarn
 yarn dev
 ```
