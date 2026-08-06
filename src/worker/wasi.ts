@@ -244,7 +244,7 @@ export async function runCircomspect(fileName = "main.circom") {
                 'P1003'
             ] as string[],
 
-            // Environment variables that are accesible to the WASI module
+            // Environment variables that are accessible to the WASI module
             env: {
                 RUST_BACKTRACE: "1",
             },
@@ -294,7 +294,7 @@ export async function runCircom(
                 !options.nosym && "--sym",
             ].filter((k) => k !== false) as string[],
 
-            // Environment variables that are accesible to the WASI module
+            // Environment variables that are accessible to the WASI module
             env: {
                 RUST_BACKTRACE: "1",
             },
